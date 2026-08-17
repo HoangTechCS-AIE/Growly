@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------- palette --
+   Light is the base. Dark is applied when the OS asks for it (unless the user
+   forced light) and when the user explicitly picks it. Every colour below is a
+   role, never a hue: components only ever reference these. */
+
+:root {
+  --canvas: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --surface-3: #e5e8ee;
+  --line: #e0e4ea;
+  --line-strong: #c6ccd6;
+  --ink: #14161c;
+  --muted: #5c6373;
+  --accent: #0b7a55;
+  --accent-ink: #ffffff;
+  --danger: #c02a3f;
+  --warn: #8a5a00;
+  --shadow: 0 1px 2px rgb(16 20 28 / 0.06), 0 8px 24px -12px rgb(16 20 28 / 0.18);
+
+  /* How a project/area hue is turned into a chip, dot or calendar block. */
+  --tone-mix: #05070c;
+  --tone-fg-amt: 62%;
+  --tone-bg-amt: 11%;
+  --tone-border-amt: 30%;
+
+  --hue-indigo: #5b5ce0;
+  --hue-emerald: #0f9d70;
+  --hue-amber: #b57900;
+  --hue-rose: #d63a5b;
+  --hue-sky: #0987c4;
+  --hue-violet: #7c4ddb;
+  --hue-teal: #0d9488;
+  --hue-orange: #d1620c;
+  --hue-slate: #64748b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0a0b0e;
+    --surface: #121419;
+    --surface-2: #171a21;
+    --surface-3: #1d212a;
+    --line: #262a34;
+    --line-strong: #333949;
+    --ink: #e7e9ef;
+    --muted: #8d93a3;
+    --accent: #34d399;
+    --accent-ink: #052e22;
+    --danger: #fb7185;
+    --warn: #fbbf24;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+
+    --tone-mix: #ffffff;
+    --tone-fg-amt: 58%;
+    --tone-bg-amt: 14%;
+    --tone-border-amt: 28%;
+
+    --hue-indigo: #818cf8;
+    --hue-emerald: #34d399;
+    --hue-amber: #fbbf24;
+    --hue-rose: #fb7185;
+    --hue-sky: #38bdf8;
+    --hue-violet: #a78bfa;
+    --hue-teal: #2dd4bf;
+    --hue-orange: #fb923c;
+    --hue-slate: #94a3b8;
+  }
+}
+
+:root[data-theme="dark"] {
+  --canvas: #0a0b0e;
+  --surface: #121419;
+  --surface-2: #171a21;
+  --surface-3: #1d212a;
+  --line: #262a34;
+  --line-strong: #333949;
+  --ink: #e7e9ef;
+  --muted: #8d93a3;
+  --accent: #34d399;
+  --accent-ink: #052e22;
+  --danger: #fb7185;
+  --warn: #fbbf24;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+
+  --tone-mix: #ffffff;
+  --tone-fg-amt: 58%;
+  --tone-bg-amt: 14%;
+  --tone-border-amt: 28%;
+
+  --hue-indigo: #818cf8;
+  --hue-emerald: #34d399;
+  --hue-amber: #fbbf24;
+  --hue-rose: #fb7185;
+  --hue-sky: #38bdf8;
+  --hue-violet: #a78bfa;
+  --hue-teal: #2dd4bf;
+  --hue-orange: #fb923c;
+  --hue-slate: #94a3b8;
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+  }
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow-wrap: break-word;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 30%, transparent);
+}
+
+* {
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+/* One visible focus style for everything reachable by keyboard. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface;
+  }
+
+  .card-pad {
+    @apply rounded-xl border border-line bg-surface p-4;
+  }
+
+  .btn {
+    @apply inline-flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg
+      border border-line bg-surface-2 px-2.5 py-1.5 text-[13px] font-medium text-ink transition
+      hover:border-line-strong hover:bg-surface-3
+      disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply border-transparent bg-accent text-accent-ink hover:bg-accent hover:brightness-110;
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-muted hover:bg-surface-2 hover:text-ink;
+  }
+
+  .btn-sm {
+    @apply min-h-8 px-2 py-1 text-xs;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-[13px] text-ink
+      outline-none transition placeholder:text-muted/70
+      focus:border-line-strong focus:ring-2 focus:ring-accent/25;
+  }
+
+  .label {
+    @apply mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px]
+      font-medium leading-4 whitespace-nowrap;
+  }
+
+  .chip-plain {
+    @apply border-line bg-surface-2 text-muted;
+  }
+
+  .section-title {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted;
+  }
+
+  .link {
+    @apply text-ink underline decoration-line-strong underline-offset-2 hover:decoration-accent;
+  }
+
+  /* Row actions are hover-revealed on pointer devices and always visible on touch. */
+  .row-actions {
+    @apply opacity-100 transition;
+  }
+  @media (hover: hover) {
+    .row-actions {
+      @apply opacity-0;
+    }
+    .group:hover .row-actions,
+    .row-actions:focus-within {
+      @apply opacity-100;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ tones --
+   A project or area picks a hue; these three utilities derive the chip, dot and
+   calendar-block styles from it, so both themes stay legible from one source. */
+
+.tone-indigo { --tone: var(--hue-indigo); }
+.tone-emerald { --tone: var(--hue-emerald); }
+.tone-amber { --tone: var(--hue-amber); }
+.tone-rose { --tone: var(--hue-rose); }
+.tone-sky { --tone: var(--hue-sky); }
+.tone-violet { --tone: var(--hue-violet); }
+.tone-teal { --tone: var(--hue-teal); }
+.tone-orange { --tone: var(--hue-orange); }
+.tone-slate { --tone: var(--hue-slate); }
+
+.tone-chip {
+  background: color-mix(in oklab, var(--tone) var(--tone-bg-amt), transparent);
+  color: color-mix(in oklab, var(--tone) var(--tone-fg-amt), var(--tone-mix));
+  border-color: color-mix(in oklab, var(--tone) var(--tone-border-amt), transparent);
+}
+
+.tone-dot {
+  background: var(--tone);
+}
+
+.tone-block {
+  background: color-mix(in oklab, var(--tone) 16%, var(--surface));
+  border-color: color-mix(in oklab, var(--tone) 42%, transparent);
+  color: color-mix(in oklab, var(--tone) 55%, var(--tone-mix));
+}
+.tone-block:hover {
+  background: color-mix(in oklab, var(--tone) 26%, var(--surface));
+}
+
+/* --------------------------------------------------------------- markdown -- */
+
+.prose-note {
+  @apply text-[13.5px] leading-relaxed text-ink/90;
+}
+.prose-note h1 { @apply mt-5 mb-2 text-lg font-semibold text-ink; }
+.prose-note h2 { @apply mt-5 mb-2 text-[15px] font-semibold text-ink; }
+.prose-note h3 { @apply mt-4 mb-1.5 text-[13.5px] font-semibold text-ink; }
+.prose-note p { @apply my-2; }
+.prose-note ul { @apply my-2 list-disc space-y-1 pl-5; }
+.prose-note ol { @apply my-2 list-decimal space-y-1 pl-5; }
+.prose-note code { @apply rounded bg-surface-3 px-1 py-0.5 font-mono text-[12px] text-accent; }
+.prose-note pre { @apply my-3 overflow-x-auto rounded-lg border border-line bg-surface-2 p-3; }
+.prose-note pre code { @apply bg-transparent p-0 text-ink; }
+.prose-note blockquote { @apply my-3 border-l-2 border-line-strong pl-3 text-muted; }
+.prose-note a { @apply text-accent underline underline-offset-2; }
+.prose-note hr { @apply my-4 border-line; }
+.prose-note table { @apply my-3 w-full border-collapse text-[13px]; }
+.prose-note th, .prose-note td { @apply border border-line px-2 py-1 text-left; }
+
+input[type="number"]::-webkit-inner-spin-button { @apply appearance-none; }
