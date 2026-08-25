@@ -3,8 +3,8 @@ import { ReviewForm } from "@/components/review-form";
 import { TaskList } from "@/components/task-list";
 import { Card, Meter, PageHeader, StatTile } from "@/components/ui";
 import {
-  alignmentScore, getReview, getSettings, listGoals, listTasks, loggedMinutesByDay,
-  stuckItems, timePerGoal,
+  getReview, getSettings, listProjects, listTasks, loggedMinutesByDay,
+  projectFocusScore, stuckItems, timePerProject,
 } from "@/lib/queries";
 import {
   addDaysISO, endOfMonthISO, formatDate, formatDateLong, formatDuration, monthKey, monthName,
@@ -22,17 +22,17 @@ const FIELDS = {
     { key: "tomorrow", label: "The 1–3 things that matter tomorrow", rows: 3 },
   ],
   weekly: [
-    { key: "moved", label: "Which goals actually moved this week?", rows: 3 },
+    { key: "moved", label: "Which projects actually moved this week?", rows: 3 },
     { key: "stalled", label: "What stalled — and is it the plan or the execution?", rows: 3 },
     { key: "strategy", label: "Does the current strategy still make sense?", rows: 3 },
     { key: "drop", label: "What will you stop doing?", rows: 2 },
     { key: "next", label: "Top 3 for next week", rows: 3 },
   ],
   monthly: [
-    { key: "progress", label: "Progress against each goal", rows: 4 },
+    { key: "progress", label: "Progress on each project", rows: 4 },
     { key: "strategy", label: "Is the strategy still the right bet? What changed?", rows: 4 },
     { key: "reallocate", label: "Where should time move next month?", rows: 3 },
-    { key: "revise", label: "Goals to revise, add or drop", rows: 3 },
+    { key: "revise", label: "Projects to revise, add or drop", rows: 3 },
   ],
 } as const;
 
@@ -59,9 +59,9 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
     today,
   ).filter((t) => t.completed_at && t.completed_at.slice(0, 10) >= from && t.completed_at.slice(0, 10) <= to);
   const open = listTasks({ scheduledFrom: from, scheduledTo: to }, today);
-  const alignment = alignmentScore(from, to);
-  const invested = timePerGoal(from, to);
-  const goals = listGoals({ status: "active" });
+  const inProject = projectFocusScore(from, to);
+  const invested = timePerProject(from, to);
+  const projects = listProjects({ status: "active" });
   const stuck = stuckItems(today);
   const logged = loggedMinutesByDay(from, to);
   const totalLogged = logged.reduce((sum, row) => sum + row.minutes, 0);
@@ -120,10 +120,10 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
         <StatTile label="Still open" value={open.filter((t) => t.status !== "done").length} />
         <StatTile label="Time logged" value={formatDuration(totalLogged) || "0m"} />
         <StatTile
-          label="Alignment"
-          value={`${alignment.score}%`}
-          tone={alignment.score >= 70 ? "good" : alignment.score >= 40 ? "warn" : "bad"}
-          sub={`${alignment.aligned}/${alignment.total} tasks serve a goal`}
+          label="In a project"
+          value={`${inProject.score}%`}
+          tone={inProject.score >= 70 ? "good" : inProject.score >= 40 ? "warn" : "bad"}
+          sub={`${inProject.grouped}/${inProject.total} tasks belong to a project`}
         />
       </div>
 
@@ -137,32 +137,32 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
           />
 
           {kind !== "daily" && (
-            <Card title="Goal progress" hint="Where the period's effort actually landed">
+            <Card title="Project progress" hint="Where the period's effort actually landed">
               <ul className="flex flex-col gap-3">
-                {goals.map((goal) => {
-                  const minutes = invested.find((i) => i.goal_id === goal.id)?.minutes ?? 0;
-                  const doneThisPeriod = completed.filter((t) => t.effective_goal_id === goal.id).length;
+                {projects.map((project) => {
+                  const minutes = invested.find((i) => i.project_id === project.id)?.minutes ?? 0;
+                  const doneThisPeriod = completed.filter((t) => t.project_id === project.id).length;
                   return (
-                    <li key={goal.id}>
+                    <li key={project.id}>
                       <div className="mb-1 flex items-baseline justify-between gap-2">
-                        <span className="truncate text-[13px]">{goal.title}</span>
+                        <span className="truncate text-[13px]">{project.title}</span>
                         <span className="shrink-0 text-[11px] tabular-nums text-muted">
                           {doneThisPeriod} done · {formatDuration(minutes) || "0m"}
                         </span>
                       </div>
                       <Meter
-                        value={goal.task_done}
-                        max={Math.max(goal.task_total, 1)}
+                        value={project.task_done}
+                        max={Math.max(project.task_total, 1)}
                         tone={doneThisPeriod > 0 ? "accent" : "muted"}
                       />
                       <p className="mt-1 text-[11px] text-muted">
-                        {pct(goal.task_done, goal.task_total)}% of all its tasks done
+                        {pct(project.task_done, project.task_total)}% of all its tasks done
                         {doneThisPeriod === 0 && " · nothing moved in this period"}
                       </p>
                     </li>
                   );
                 })}
-                {!goals.length && <p className="text-[12.5px] text-muted">No active goals.</p>}
+                {!projects.length && <p className="text-[12.5px] text-muted">No active projects.</p>}
               </ul>
             </Card>
           )}
@@ -212,9 +212,9 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
             {invested.length ? (
               <ul className="flex flex-col gap-2">
                 {invested.map((row) => (
-                  <li key={row.goal_id ?? "none"}>
+                  <li key={row.project_id ?? "none"}>
                     <div className="mb-1 flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[12.5px]">{row.goal_title ?? "Not linked to a goal"}</span>
+                      <span className="truncate text-[12.5px]">{row.project_title ?? "Not in a project"}</span>
                       <span className="shrink-0 text-[11px] tabular-nums text-muted">
                         {formatDuration(row.minutes)}
                       </span>
@@ -222,7 +222,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
                     <Meter
                       value={row.minutes}
                       max={Math.max(...invested.map((i) => i.minutes))}
-                      tone={row.goal_id ? "accent" : "warn"}
+                      tone={row.project_id ? "accent" : "warn"}
                     />
                   </li>
                 ))}

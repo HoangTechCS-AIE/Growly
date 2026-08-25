@@ -40,8 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Growly local database
+# Growly local database — including the .sqlite snapshots taken before migrations
 data/*.db
 data/*.db-*
+data/*.sqlite
+data/*.backup*
 
 .smoke/

@@ -72,7 +72,7 @@ export function Timeline({
                   <span className="truncate">{project.title}</span>
                 </Link>
                 <p className="mt-0.5 truncate text-[11px] text-muted">
-                  {project.goal_title ?? "no goal"} · {project.task_done}/{project.task_total}
+                  {project.task_done}/{project.task_total} tasks
                 </p>
                 <Meter
                   value={project.task_done}

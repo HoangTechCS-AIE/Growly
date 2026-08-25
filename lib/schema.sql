@@ -139,6 +139,10 @@ CREATE TABLE IF NOT EXISTS notes (
   content TEXT NOT NULL DEFAULT '',
   kind TEXT NOT NULL DEFAULT 'quick',
   date TEXT,
+  parent_id TEXT REFERENCES notes(id) ON DELETE CASCADE,
+  icon TEXT,
+  cover TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
   project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
   goal_id    TEXT REFERENCES goals(id)    ON DELETE SET NULL,
   task_id    TEXT REFERENCES tasks(id)    ON DELETE SET NULL,
@@ -147,8 +151,8 @@ CREATE TABLE IF NOT EXISTS notes (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_notes_kind ON notes(kind);
-CREATE INDEX IF NOT EXISTS idx_notes_date ON notes(date);
+CREATE INDEX IF NOT EXISTS idx_notes_kind   ON notes(kind);
+CREATE INDEX IF NOT EXISTS idx_notes_date   ON notes(date);
 
 CREATE TABLE IF NOT EXISTS note_tags (
   note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
@@ -206,3 +210,109 @@ CREATE TABLE IF NOT EXISTS reviews (
   updated_at TEXT NOT NULL,
   UNIQUE (kind, period_key)
 );
+
+/* ---------------------------------------------------------------- databases --
+   A Notion-style database lives inside a note as a `::db id=…` block. Property
+   definitions and row values are JSON: they are read and written whole, and a
+   typed column per property would mean a migration every time one is added. */
+
+CREATE TABLE IF NOT EXISTS databases (
+  id TEXT PRIMARY KEY,
+  note_id TEXT REFERENCES notes(id) ON DELETE CASCADE,
+  title TEXT NOT NULL DEFAULT 'Untitled database',
+  properties TEXT NOT NULL DEFAULT '[]',
+  view TEXT NOT NULL DEFAULT 'table',
+  group_by TEXT,
+  date_prop TEXT,
+  filters TEXT NOT NULL DEFAULT '[]',
+  sorts TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_databases_note ON databases(note_id);
+
+CREATE TABLE IF NOT EXISTS database_rows (
+  id TEXT PRIMARY KEY,
+  database_id TEXT NOT NULL REFERENCES databases(id) ON DELETE CASCADE,
+  position INTEGER NOT NULL DEFAULT 0,
+  values_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_database_rows_db ON database_rows(database_id);
+
+/* ------------------------------------------------------------ search index --
+   One FTS5 table covers notes, tasks, projects and goals so a single query can
+   rank across all of them. `remove_diacritics 2` folds Vietnamese tone marks,
+   but not "đ", which Unicode treats as its own letter rather than d + a mark —
+   hence the extra `fold` column holding a đ→d copy of the text. Matching hits
+   it too, while snippets still come from the untouched title and body. */
+
+CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
+  kind UNINDEXED,
+  ref_id UNINDEXED,
+  title,
+  body,
+  fold,
+  tokenize = 'unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS notes_search_ai AFTER INSERT ON notes BEGIN
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('note', new.id, new.title, new.content,
+         replace(replace(new.title || ' ' || new.content, 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS notes_search_au AFTER UPDATE ON notes BEGIN
+  DELETE FROM search_index WHERE kind = 'note' AND ref_id = old.id;
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('note', new.id, new.title, new.content,
+         replace(replace(new.title || ' ' || new.content, 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS notes_search_ad AFTER DELETE ON notes BEGIN
+  DELETE FROM search_index WHERE kind = 'note' AND ref_id = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS tasks_search_ai AFTER INSERT ON tasks BEGIN
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('task', new.id, new.title, COALESCE(new.notes, ''),
+         replace(replace(new.title || ' ' || COALESCE(new.notes, ''), 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS tasks_search_au AFTER UPDATE ON tasks BEGIN
+  DELETE FROM search_index WHERE kind = 'task' AND ref_id = old.id;
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('task', new.id, new.title, COALESCE(new.notes, ''),
+         replace(replace(new.title || ' ' || COALESCE(new.notes, ''), 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS tasks_search_ad AFTER DELETE ON tasks BEGIN
+  DELETE FROM search_index WHERE kind = 'task' AND ref_id = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS projects_search_ai AFTER INSERT ON projects BEGIN
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('project', new.id, new.title, COALESCE(new.description, ''),
+         replace(replace(new.title || ' ' || COALESCE(new.description, ''), 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS projects_search_au AFTER UPDATE ON projects BEGIN
+  DELETE FROM search_index WHERE kind = 'project' AND ref_id = old.id;
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('project', new.id, new.title, COALESCE(new.description, ''),
+         replace(replace(new.title || ' ' || COALESCE(new.description, ''), 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS projects_search_ad AFTER DELETE ON projects BEGIN
+  DELETE FROM search_index WHERE kind = 'project' AND ref_id = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS goals_search_ai AFTER INSERT ON goals BEGIN
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('goal', new.id, new.title, COALESCE(new.description, ''),
+         replace(replace(new.title || ' ' || COALESCE(new.description, ''), 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS goals_search_au AFTER UPDATE ON goals BEGIN
+  DELETE FROM search_index WHERE kind = 'goal' AND ref_id = old.id;
+  INSERT INTO search_index(kind, ref_id, title, body, fold)
+  VALUES('goal', new.id, new.title, COALESCE(new.description, ''),
+         replace(replace(new.title || ' ' || COALESCE(new.description, ''), 'đ', 'd'), 'Đ', 'D'));
+END;
+CREATE TRIGGER IF NOT EXISTS goals_search_ad AFTER DELETE ON goals BEGIN
+  DELETE FROM search_index WHERE kind = 'goal' AND ref_id = old.id;
+END;

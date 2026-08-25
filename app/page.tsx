@@ -4,8 +4,8 @@ import { TaskList } from "@/components/task-list";
 import { TaskRow } from "@/components/task-row";
 import { IconWarning } from "@/components/icons";
 import {
-  alignmentScore, capacityForDay, getSettings, listGoals, listNotes, listTasks,
-  loggedMinutesByDay, stuckItems, timePerGoal, weekStats,
+  capacityForDay, getSettings, listNotes, listProjects, listTasks,
+  loggedMinutesByDay, projectFocusScore, stuckItems, timePerProject, weekStats,
 } from "@/lib/queries";
 import {
   addDaysISO, formatClock, formatDateLong, formatDuration, pct, relativeDay,
@@ -26,10 +26,10 @@ export default function TodayPage() {
   const overdue = listTasks({ dueBefore: today, parentId: null }, today);
   const inbox = listTasks({ status: ["inbox"], parentId: null }, today);
   const capacity = capacityForDay(today);
-  const alignment = alignmentScore(weekStart, weekEnd);
+  const inProject = projectFocusScore(weekStart, weekEnd);
   const week = weekStats(weekStart, weekEnd);
-  const goals = listGoals({ status: "active" });
-  const invested = timePerGoal(weekStart, weekEnd);
+  const projects = listProjects({ status: "active" });
+  const invested = timePerProject(weekStart, weekEnd);
   const stuck = stuckItems(today);
   const notes = listNotes({ limit: 5 });
 
@@ -119,7 +119,7 @@ export default function TodayPage() {
                     >
                       {task.title}
                     </Link>
-                    <span className="shrink-0 text-[11px] text-muted">{task.goal_title ?? "—"}</span>
+                    <span className="shrink-0 text-[11px] text-muted">{task.project_title ?? "—"}</span>
                   </li>
                 ))}
               </ul>
@@ -150,7 +150,7 @@ export default function TodayPage() {
           {inbox.length > 0 && (
             <Card
               title="Inbox"
-              hint="Unsorted captures — give each one a goal, a project, or a day"
+              hint="Unsorted captures — give each one a project or a day"
               action={
                 <Link href="/tasks?view=list&status=inbox" className="btn btn-sm">
                   Triage
@@ -165,10 +165,10 @@ export default function TodayPage() {
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <StatTile
-              label="Alignment"
-              value={`${alignment.score}%`}
-              tone={alignment.score >= 70 ? "good" : alignment.score >= 40 ? "warn" : "bad"}
-              sub={`${alignment.aligned}/${alignment.total} of this week's work ladders up to a goal`}
+              label="In a project"
+              value={`${inProject.score}%`}
+              tone={inProject.score >= 70 ? "good" : inProject.score >= 40 ? "warn" : "bad"}
+              sub={`${inProject.grouped}/${inProject.total} of this week's work belongs to a project`}
             />
             <StatTile
               label="Done this week"
@@ -190,32 +190,32 @@ export default function TodayPage() {
           </Card>
 
           <Card
-            title="Active goals"
+            title="Active projects"
             action={
-              <Link href="/strategy" className="btn btn-sm btn-ghost">
-                Strategy
+              <Link href="/projects" className="btn btn-sm btn-ghost">
+                All projects
               </Link>
             }
           >
-            {goals.length ? (
+            {projects.length ? (
               <ul className="flex flex-col gap-3">
-                {goals.map((goal) => {
-                  const share = pct(goal.task_done, goal.task_total);
-                  const minutes = invested.find((i) => i.goal_id === goal.id)?.minutes ?? 0;
+                {projects.map((project) => {
+                  const share = pct(project.task_done, project.task_total);
+                  const minutes = invested.find((i) => i.project_id === project.id)?.minutes ?? 0;
                   return (
-                    <li key={goal.id}>
+                    <li key={project.id}>
                       <div className="mb-1 flex items-baseline justify-between gap-2">
-                        <Link href={`/strategy?goal=${goal.id}`} className="truncate text-[13px] hover:text-accent">
-                          {goal.title}
+                        <Link href={`/projects/${project.id}`} className="truncate text-[13px] hover:text-accent">
+                          {project.title}
                         </Link>
                         <span className="shrink-0 text-[11px] tabular-nums text-muted">
-                          {goal.task_done}/{goal.task_total}
+                          {project.task_done}/{project.task_total}
                         </span>
                       </div>
-                      <Meter value={goal.task_done} max={Math.max(goal.task_total, 1)} />
+                      <Meter value={project.task_done} max={Math.max(project.task_total, 1)} />
                       <p className="mt-1 text-[11px] text-muted">
                         {share}% of tasks done
-                        {goal.target_date ? ` · target ${relativeDay(goal.target_date, today)}` : ""}
+                        {project.due_date ? ` · due ${relativeDay(project.due_date, today)}` : ""}
                         {minutes ? ` · ${formatDuration(minutes)} this week` : ""}
                       </p>
                     </li>
@@ -224,11 +224,11 @@ export default function TodayPage() {
               </ul>
             ) : (
               <EmptyState
-                title="No active goals"
-                hint="Add a goal in Strategy, then link projects and tasks to it."
+                title="No active projects"
+                hint="A project groups a piece of work with its tasks and notes."
                 action={
-                  <Link href="/strategy" className="btn btn-sm btn-primary">
-                    Set up strategy
+                  <Link href="/projects" className="btn btn-sm btn-primary">
+                    Create a project
                   </Link>
                 }
               />

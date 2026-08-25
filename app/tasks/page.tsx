@@ -6,7 +6,7 @@ import { TaskList } from "@/components/task-list";
 import { Timeline } from "@/components/timeline";
 import { Card, PageHeader } from "@/components/ui";
 import {
-  getSettings, listAreas, listGoals, listMilestones, listProjects, listTags, listTasks,
+  getSettings, listAreas, listMilestones, listProjects, listTags, listTasks,
   type TaskFilter,
 } from "@/lib/queries";
 import type { TaskStatus, TaskView } from "@/lib/types";
@@ -54,7 +54,6 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
 
   const filter: TaskFilter = {
     status: single("status") ? [single("status") as TaskStatus] : undefined,
-    goalId: single("goal"),
     projectId: single("project"),
     areaId: single("area"),
     tagId: single("tag"),
@@ -73,18 +72,17 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
 
   const tasks = listTasks(filter, today);
   const areas = listAreas();
-  const goals = listGoals();
   const projects = listProjects();
   const tags = listTags();
 
   const openCount = tasks.filter((t) => t.status !== "done").length;
-  const unaligned = tasks.filter((t) => t.status !== "done" && !t.effective_goal_id).length;
+  const looseTasks = tasks.filter((t) => t.status !== "done" && !t.project_id).length;
 
   return (
     <div className="mx-auto max-w-[1500px]">
       <PageHeader
         title="Tasks"
-        subtitle={`${openCount} open${unaligned ? ` · ${unaligned} not linked to a goal` : " · all linked to a goal"}`}
+        subtitle={`${openCount} open${looseTasks ? ` · ${looseTasks} not in a project` : " · all in a project"}`}
         actions={
           <Link href="/tasks/new" className="btn btn-primary">
             New task
@@ -92,7 +90,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
         }
       />
 
-      <TaskFilters areas={areas} goals={goals} projects={projects} tags={tags} />
+      <TaskFilters areas={areas} projects={projects} tags={tags} />
 
       {view === "board" && <Board tasks={tasks} today={today} />}
 

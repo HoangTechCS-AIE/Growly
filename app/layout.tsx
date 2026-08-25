@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { CommandPalette } from "@/components/command-palette";
 import { MobileNav, Sidebar } from "@/components/nav";
 import { Topbar } from "@/components/topbar";
 import { THEME_SCRIPT } from "@/components/theme-toggle";
-import { listAreas, listGoals, listProjects, listTasks } from "@/lib/queries";
+import { listAreas, listProjects, listTasks } from "@/lib/queries";
 import { todayISO } from "@/lib/util";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -34,7 +35,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     overdue: listTasks({ dueBefore: today, parentId: null }, today).length,
   };
   const areas = listAreas();
-  const goals = listGoals({ status: "active" });
   const projects = listProjects({ status: "active" });
 
   return (
@@ -58,7 +58,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar
               areas={areas}
-              goals={goals}
               projects={projects}
               nav={<MobileNav key="mobile-nav" counts={counts} />}
             />
@@ -67,6 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </main>
           </div>
         </div>
+        <CommandPalette />
       </body>
     </html>
   );

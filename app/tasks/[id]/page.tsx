@@ -6,7 +6,7 @@ import {
 } from "@/components/task-panels";
 import { Card, PageHeader } from "@/components/ui";
 import {
-  getTask, getTaskDeps, getTaskEvents, getTaskReflection, getTimeLogs, listAreas, listGoals,
+  getTask, getTaskDeps, getTaskEvents, getTaskReflection, getTimeLogs, listAreas,
   listNotes, listProjects, listTasks,
 } from "@/lib/queries";
 import { STATUS_LABEL } from "@/lib/types";
@@ -55,31 +55,15 @@ export default async function TaskDetailPage({ params }: PageProps<"/tasks/[id]"
         }
       />
 
-      {(task.short_term_outcome || task.long_term_contribution || task.next_action) && (
-        <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="card-pad">
-            <p className="label">Short-term outcome</p>
-            <p className="text-[13px] leading-relaxed text-ink/90">
-              {task.short_term_outcome || <span className="text-muted">Not defined yet.</span>}
-            </p>
-          </div>
-          <div className="card-pad">
-            <p className="label">Long-term contribution</p>
-            <p className="text-[13px] leading-relaxed text-ink/90">
-              {task.long_term_contribution || <span className="text-muted">Not defined yet.</span>}
-            </p>
-          </div>
-          <div className="card-pad">
-            <p className="label">Next action</p>
-            <p className="text-[13px] leading-relaxed text-ink/90">
-              {task.next_action || <span className="text-muted">Not defined yet.</span>}
-            </p>
-          </div>
+      {task.next_action && (
+        <div className="card-pad mb-4">
+          <p className="label">Next action</p>
+          <p className="text-[13px] leading-relaxed text-ink/90">{task.next_action}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <TaskForm task={task} goals={listGoals()} projects={listProjects()} areas={listAreas()} />
+        <TaskForm task={task} projects={listProjects()} areas={listAreas()} />
 
         <div className="flex flex-col gap-4">
           <SubtaskPanel parentId={id} subtasks={subtasks} />

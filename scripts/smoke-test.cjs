@@ -178,11 +178,16 @@ check("saving a review twice updates the same period", () => {
 });
 
 // --- search -----------------------------------------------------------------
-check("search spans tasks, notes, projects and goals", () => {
+check("search spans tasks, notes and projects", () => {
   assert.ok(queries.search("Landing").projects.length >= 1, "matches a project");
   assert.ok(queries.search("hero").tasks.length >= 1, "matches a task title");
   assert.ok(queries.search("Positioning").notes.length >= 1, "matches a note");
-  assert.ok(queries.search("beta").goals.length >= 1, "matches a goal");
+});
+
+check("goals are no longer surfaced in search", () => {
+  // Goals still exist in the database, they are just not part of the UI.
+  assert.equal(queries.search("beta").goals.length, 0, "goal hits are filtered out");
+  assert.ok(queries.getGoal(goalId), "the goal row itself is untouched");
 });
 
 console.log(`\n${passed} checks passed.\n`);

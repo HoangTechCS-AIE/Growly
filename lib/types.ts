@@ -109,6 +109,7 @@ export interface ProjectView extends Project {
   strategy_title: string | null;
   task_total: number;
   task_done: number;
+  note_total: number;
   last_activity: string | null;
 }
 
@@ -172,6 +173,10 @@ export interface Note {
   content: string;
   kind: NoteKind;
   date: string | null;
+  parent_id: string | null;
+  icon: string | null;
+  cover: string | null;
+  position: number;
   project_id: string | null;
   goal_id: string | null;
   task_id: string | null;
@@ -185,6 +190,64 @@ export interface NoteView extends Note {
   project_title: string | null;
   goal_title: string | null;
   tags: Tag[];
+}
+
+/** One row of the sidebar page tree: enough to draw it without loading content. */
+export interface NoteTreeItem {
+  id: string;
+  title: string;
+  icon: string | null;
+  parent_id: string | null;
+  position: number;
+  pinned: number;
+  archived: number;
+  child_count: number;
+}
+
+/** Preset page covers — a gradient name, so nothing has to be uploaded or stored. */
+export const NOTE_COVERS: { key: string; label: string; css: string }[] = [
+  { key: "moss", label: "Moss", css: "linear-gradient(120deg, #0b7a55, #34d399 55%, #a7f3d0)" },
+  { key: "dusk", label: "Dusk", css: "linear-gradient(120deg, #312e81, #7c3aed 55%, #f472b6)" },
+  { key: "ember", label: "Ember", css: "linear-gradient(120deg, #7c2d12, #ea580c 55%, #fbbf24)" },
+  { key: "tide", label: "Tide", css: "linear-gradient(120deg, #0c4a6e, #0987c4 55%, #67e8f9)" },
+  { key: "clay", label: "Clay", css: "linear-gradient(120deg, #44403c, #a8a29e 55%, #e7e5e4)" },
+  { key: "rose", label: "Rose", css: "linear-gradient(120deg, #831843, #d63a5b 55%, #fecdd3)" },
+];
+
+export function coverCss(key: string | null): string | null {
+  return NOTE_COVERS.find((c) => c.key === key)?.css ?? null;
+}
+
+export type SearchKind = "note" | "task" | "project" | "goal";
+
+export interface SearchHit {
+  kind: SearchKind;
+  id: string;
+  title: string;
+  /** Matched runs are fenced by SNIPPET_OPEN/SNIPPET_CLOSE, never by HTML. */
+  snippet: string;
+  icon: string | null;
+  context: string | null;
+  href: string;
+}
+
+export const SNIPPET_OPEN = "\u0001";
+export const SNIPPET_CLOSE = "\u0002";
+
+/** Split a snippet into plain and matched runs for rendering. */
+export function snippetParts(snippet: string): { text: string; hit: boolean }[] {
+  const parts: { text: string; hit: boolean }[] = [];
+  for (const chunk of snippet.split(SNIPPET_OPEN)) {
+    const [matched, ...rest] = chunk.split(SNIPPET_CLOSE);
+    if (rest.length) {
+      if (matched) parts.push({ text: matched, hit: true });
+      const tail = rest.join(SNIPPET_CLOSE);
+      if (tail) parts.push({ text: tail, hit: false });
+    } else if (matched) {
+      parts.push({ text: matched, hit: false });
+    }
+  }
+  return parts;
 }
 
 export interface TaskEvent {

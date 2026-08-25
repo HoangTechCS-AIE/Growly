@@ -266,7 +266,7 @@ export function ReflectionPanel({
       <Card title="Closing the loop" hint="Available once the task is done">
         <p className="px-1 py-3 text-[12.5px] text-muted">
           When you finish this task, Growly asks three questions: did the result match the
-          expectation, did it move a long-term goal, and what is the next step.
+          expectation, did it move its project forward, and what is the next step.
         </p>
         <button
           type="button"
@@ -297,7 +297,7 @@ export function ReflectionPanel({
           />
         </div>
         <div>
-          <label className="label">Did it move a long-term goal?</label>
+          <label className="label">Did it move the project forward?</label>
           <textarea
             value={form.contributed}
             onChange={(e) => setForm({ ...form, contributed: e.target.value })}

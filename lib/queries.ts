@@ -1,9 +1,12 @@
 import "server-only";
 import { all, get } from "./db";
 import type {
-  Area, GoalView, Milestone, Note, NoteView, ProjectView, Reflection, ReviewRecord,
-  Settings, Strategy, Tag, Task, TaskEvent, TaskStatus, TaskView, TimeLog, Vision,
+  Area, GoalView, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
+  ReviewRecord, SearchHit, SearchKind, Settings, Strategy, Tag, Task, TaskEvent, TaskStatus,
+  TaskView, TimeLog, Vision,
 } from "./types";
+import { SNIPPET_CLOSE, SNIPPET_OPEN, STATUS_LABEL } from "./types";
+export type { SearchHit, SearchKind } from "./types";
 import { addDaysISO, todayISO } from "./util";
 
 /* ------------------------------------------------------------------ settings */
@@ -103,6 +106,7 @@ const PROJECT_SELECT = `
     (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.archived = 0) AS task_total,
     (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.archived = 0
        AND t.status = 'done') AS task_done,
+    (SELECT COUNT(*) FROM notes n WHERE n.project_id = p.id AND n.archived = 0) AS note_total,
     (SELECT MAX(t.updated_at) FROM tasks t WHERE t.project_id = p.id) AS last_activity
   FROM projects p
   LEFT JOIN strategies s ON s.id = p.strategy_id
@@ -449,6 +453,47 @@ export function getOutlinks(noteId: string): Note[] {
   );
 }
 
+/** Every non-archived page as a flat row; the sidebar assembles the tree. */
+export function listNoteTree(includeArchived = false): NoteTreeItem[] {
+  return all<NoteTreeItem>(
+    `SELECT n.id, n.title, n.icon, n.parent_id, n.position, n.pinned, n.archived,
+            (SELECT COUNT(*) FROM notes c WHERE c.parent_id = n.id AND c.archived = 0) AS child_count
+     FROM notes n
+     ${includeArchived ? "" : "WHERE n.archived = 0"}
+     ORDER BY n.pinned DESC, n.position, n.updated_at DESC`,
+  );
+}
+
+/** Root-first chain of parents, for the breadcrumb. Stops on a cycle. */
+export function getNoteAncestors(id: string): { id: string; title: string; icon: string | null }[] {
+  const chain: { id: string; title: string; icon: string | null }[] = [];
+  const seen = new Set<string>([id]);
+  let current = get<{ parent_id: string | null }>("SELECT parent_id FROM notes WHERE id = ?", id);
+  while (current?.parent_id && !seen.has(current.parent_id)) {
+    const parentId: string = current.parent_id;
+    seen.add(parentId);
+    const parent = get<{ id: string; title: string; icon: string | null; parent_id: string | null }>(
+      "SELECT id, title, icon, parent_id FROM notes WHERE id = ?",
+      parentId,
+    );
+    if (!parent) break;
+    chain.unshift({ id: parent.id, title: parent.title, icon: parent.icon });
+    current = { parent_id: parent.parent_id };
+  }
+  return chain;
+}
+
+export function listChildNotes(parentId: string, includeArchived = false): NoteTreeItem[] {
+  return all<NoteTreeItem>(
+    `SELECT n.id, n.title, n.icon, n.parent_id, n.position, n.pinned, n.archived,
+            (SELECT COUNT(*) FROM notes c WHERE c.parent_id = n.id AND c.archived = 0) AS child_count
+     FROM notes n
+     WHERE n.parent_id = ? ${includeArchived ? "" : "AND n.archived = 0"}
+     ORDER BY n.position, n.created_at`,
+    parentId,
+  );
+}
+
 export function getTasksFromNote(noteId: string, today = todayISO()): TaskView[] {
   return withTags(
     all<TaskView>(
@@ -550,6 +595,42 @@ export function loggedMinutesByDay(from: string, to: string) {
   );
 }
 
+/** Minutes logged per project over a period. */
+export function timePerProject(from: string, to: string) {
+  return all<{ project_id: string | null; project_title: string | null; minutes: number }>(
+    `SELECT t.project_id AS project_id,
+            p.title AS project_title,
+            SUM(l.minutes) AS minutes
+     FROM time_logs l
+     JOIN tasks t ON t.id = l.task_id
+     LEFT JOIN projects p ON p.id = t.project_id
+     WHERE l.date BETWEEN ? AND ?
+     GROUP BY 1, 2
+     ORDER BY minutes DESC`,
+    from,
+    to,
+  );
+}
+
+/** Share of the period's work that belongs to a project rather than floating loose. */
+export function projectFocusScore(from: string, to: string) {
+  const row = get<{ total: number; grouped: number }>(
+    `SELECT COUNT(*) AS total,
+       SUM(CASE WHEN t.project_id IS NOT NULL THEN 1 ELSE 0 END) AS grouped
+     FROM tasks t
+     WHERE t.archived = 0
+       AND ((t.scheduled_date BETWEEN ? AND ?)
+            OR (DATE(t.completed_at) BETWEEN ? AND ?))`,
+    from,
+    to,
+    from,
+    to,
+  );
+  const total = row?.total ?? 0;
+  const grouped = row?.grouped ?? 0;
+  return { total, grouped, score: total ? Math.round((grouped / total) * 100) : 0 };
+}
+
 export function weekStats(from: string, to: string) {
   const completed = get<{ n: number }>(
     `SELECT COUNT(*) AS n FROM tasks
@@ -620,21 +701,155 @@ export function listReviews(kind: string, limit = 10): ReviewRecord[] {
   ).map((r) => ({ ...r, data: JSON.parse(r.data) as Record<string, string> }) as ReviewRecord);
 }
 
+/** Turn free text into an FTS5 MATCH expression: every word required, the last
+ *  one treated as a prefix so results narrow as you type. "đ" is folded the
+ *  same way it is in the index, so typing "doi" reaches "đổi". */
+function ftsQuery(raw: string): string {
+  const words = raw
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .trim()
+    .split(/[^\p{L}\p{N}_]+/u)
+    .filter(Boolean);
+  if (!words.length) return "";
+  return words
+    .map((word, index) => (index === words.length - 1 ? `"${word}"*` : `"${word}"`))
+    .join(" ");
+}
+
+/** One ranked list across notes, tasks, projects and goals. */
+export function searchAll(raw: string, limit = 30): SearchHit[] {
+  const match = ftsQuery(raw);
+  if (!match) return [];
+
+  // Two snippets: prefer the one that actually highlights something, and never
+  // read from `fold`, whose text has had its "đ" rewritten.
+  let rows: {
+    kind: SearchKind;
+    ref_id: string;
+    title: string;
+    body_snippet: string;
+    title_snippet: string;
+  }[];
+  try {
+    rows = all(
+      `SELECT kind, ref_id, title,
+              snippet(search_index, 3, ?, ?, '…', 14) AS body_snippet,
+              snippet(search_index, 2, ?, ?, '…', 14) AS title_snippet
+       FROM search_index
+       WHERE search_index MATCH ? AND kind <> 'goal'
+       ORDER BY bm25(search_index, 0.0, 0.0, 10.0, 1.0, 0.5)
+       LIMIT ?`,
+      SNIPPET_OPEN,
+      SNIPPET_CLOSE,
+      SNIPPET_OPEN,
+      SNIPPET_CLOSE,
+      match,
+      limit,
+    );
+  } catch {
+    // An expression FTS5 cannot parse means "no results", never a broken page.
+    return [];
+  }
+  if (!rows.length) return [];
+
+  const bestSnippet = (row: (typeof rows)[number]) =>
+    row.body_snippet.includes(SNIPPET_OPEN)
+      ? row.body_snippet
+      : row.title_snippet.includes(SNIPPET_OPEN)
+        ? row.title_snippet
+        : row.body_snippet;
+
+  const idsOf = (kind: SearchKind) => rows.filter((row) => row.kind === kind).map((row) => row.ref_id);
+  const holes = (ids: string[]) => ids.map(() => "?").join(",");
+
+  const noteIds = idsOf("note");
+  const notes = new Map(
+    (noteIds.length
+      ? all<{ id: string; icon: string | null; parent_title: string | null }>(
+          `SELECT n.id, n.icon, p.title AS parent_title
+           FROM notes n LEFT JOIN notes p ON p.id = n.parent_id
+           WHERE n.archived = 0 AND n.id IN (${holes(noteIds)})`,
+          ...noteIds,
+        )
+      : []
+    ).map((row) => [row.id, row]),
+  );
+
+  const taskIds = idsOf("task");
+  const tasks = new Map(
+    (taskIds.length
+      ? all<{ id: string; status: string; project_title: string | null }>(
+          `SELECT t.id, t.status, p.title AS project_title
+           FROM tasks t LEFT JOIN projects p ON p.id = t.project_id
+           WHERE t.archived = 0 AND t.id IN (${holes(taskIds)})`,
+          ...taskIds,
+        )
+      : []
+    ).map((row) => [row.id, row]),
+  );
+
+  const projectIds = idsOf("project");
+  const projects = new Map(
+    (projectIds.length
+      ? all<{ id: string; goal_title: string | null }>(
+          `SELECT p.id, g.title AS goal_title
+           FROM projects p LEFT JOIN goals g ON g.id = p.goal_id
+           WHERE p.archived = 0 AND p.id IN (${holes(projectIds)})`,
+          ...projectIds,
+        )
+      : []
+    ).map((row) => [row.id, row]),
+  );
+
+  const goalIds = idsOf("goal");
+  const goals = new Map(
+    (goalIds.length
+      ? all<{ id: string; status: string }>(
+          `SELECT id, status FROM goals WHERE archived = 0 AND id IN (${holes(goalIds)})`,
+          ...goalIds,
+        )
+      : []
+    ).map((row) => [row.id, row]),
+  );
+
+  const hits: SearchHit[] = [];
+  for (const row of rows) {
+    const base = { kind: row.kind, id: row.ref_id, title: row.title, snippet: bestSnippet(row) };
+    if (row.kind === "note") {
+      const note = notes.get(row.ref_id);
+      if (!note) continue;
+      hits.push({ ...base, icon: note.icon, context: note.parent_title, href: `/notes/${row.ref_id}` });
+    } else if (row.kind === "task") {
+      const task = tasks.get(row.ref_id);
+      if (!task) continue;
+      hits.push({
+        ...base,
+        icon: null,
+        context: task.project_title ?? STATUS_LABEL[task.status as TaskStatus] ?? null,
+        href: `/tasks/${row.ref_id}`,
+      });
+    } else if (row.kind === "project") {
+      const project = projects.get(row.ref_id);
+      if (!project) continue;
+      hits.push({ ...base, icon: null, context: project.goal_title, href: `/tasks?project=${row.ref_id}` });
+    } else {
+      const goal = goals.get(row.ref_id);
+      if (!goal) continue;
+      hits.push({ ...base, icon: null, context: goal.status, href: `/tasks?goal=${row.ref_id}` });
+    }
+  }
+  return hits;
+}
+
+/** The grouped shape the search page and the data-layer tests expect. */
 export function search(q: string, today = todayISO()) {
-  if (!q.trim()) return { tasks: [], notes: [], projects: [], goals: [] };
-  const like = `%${q.trim()}%`;
+  const hits = searchAll(q, 120);
+  const pick = (kind: SearchKind) => hits.filter((hit) => hit.kind === kind).map((hit) => hit.id);
   return {
-    tasks: listTasks({ search: q.trim(), includeDone: true, limit: 25 }, today),
-    notes: listNotes({ search: q.trim(), limit: 25 }),
-    projects: all<ProjectView>(
-      `${PROJECT_SELECT} WHERE p.title LIKE ? OR p.description LIKE ? LIMIT 10`,
-      like,
-      like,
-    ),
-    goals: all<GoalView>(
-      `${GOAL_SELECT} WHERE g.title LIKE ? OR g.description LIKE ? LIMIT 10`,
-      like,
-      like,
-    ),
+    tasks: pick("task").map((id) => getTask(id, today)).filter(Boolean) as TaskView[],
+    notes: pick("note").map((id) => getNote(id)).filter(Boolean) as NoteView[],
+    projects: pick("project").map((id) => getProject(id)).filter(Boolean) as ProjectView[],
+    goals: pick("goal").map((id) => getGoal(id)).filter(Boolean) as GoalView[],
   };
 }

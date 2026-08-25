@@ -15,7 +15,7 @@ export interface NavCounts {
 }
 
 type NavItem = {
-  href: "/" | "/tasks" | "/calendar" | "/notes" | "/strategy" | "/review";
+  href: "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/review";
   label: string;
   Icon: (props: { className?: string }) => React.ReactElement;
   badge?: "today" | "inbox";
@@ -26,7 +26,7 @@ const NAV: NavItem[] = [
   { href: "/tasks", label: "Tasks", Icon: IconTask, badge: "inbox" },
   { href: "/calendar", label: "Calendar", Icon: IconCalendar },
   { href: "/notes", label: "Notes", Icon: IconNote },
-  { href: "/strategy", label: "Strategy", Icon: IconTarget },
+  { href: "/projects", label: "My projects", Icon: IconTarget },
   { href: "/review", label: "Review", Icon: IconReview },
 ];
 

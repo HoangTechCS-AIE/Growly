@@ -1,99 +1,94 @@
 import Link from "next/link";
-import { TaskList } from "@/components/task-list";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
-import { search } from "@/lib/queries";
-import { todayISO } from "@/lib/util";
+import { searchAll } from "@/lib/queries";
+import { snippetParts, type SearchHit } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const KIND_LABEL: Record<SearchHit["kind"], string> = {
+  note: "Page",
+  task: "Task",
+  project: "Project",
+  goal: "Goal",
+};
+
+/** Matched runs arrive fenced by control characters, so nothing here is HTML. */
+function Snippet({ text }: { text: string }) {
+  if (!text.trim()) return null;
+  return (
+    <p className="cp-snippet mt-0.5 text-[12px]">
+      {snippetParts(text).map((part, index) =>
+        part.hit ? <mark key={index}>{part.text}</mark> : <span key={index}>{part.text}</span>,
+      )}
+    </p>
+  );
+}
 
 export default async function SearchPage({ searchParams }: PageProps<"/search">) {
   const params = await searchParams;
   const raw = params.q;
   const q = (Array.isArray(raw) ? raw[0] : raw) ?? "";
-  const today = todayISO();
-  const results = search(q, today);
-  const total =
-    results.tasks.length + results.notes.length + results.projects.length + results.goals.length;
+  const hits = searchAll(q, 60);
 
   return (
-    <div className="mx-auto max-w-[1100px]">
+    <div className="mx-auto max-w-[900px]">
       <PageHeader
         title={q ? `Search: ${q}` : "Search"}
-        subtitle={q ? `${total} result(s) across tasks, notes, projects and goals` : "Full-text search across everything"}
+        subtitle={
+          q
+            ? `${hits.length} result(s), best match first — accents are optional, so "ke hoach" finds "kế hoạch"`
+            : "Full-text search across pages, tasks, projects and goals"
+        }
       />
 
       <form action="/search" className="mb-4">
         <input
           name="q"
           defaultValue={q}
-          placeholder="Search tasks, notes, projects, goals…"
+          placeholder="Search pages, tasks, projects, goals…"
           className="input"
           autoFocus
         />
       </form>
 
-      {!q && <Card><EmptyState title="Type something to search" hint="Press / anywhere to jump here." /></Card>}
-
-      {q && total === 0 && (
+      {!q && (
         <Card>
-          <EmptyState title="No matches" hint="Try a shorter phrase, or check the archive filters." />
+          <EmptyState
+            title="Type something to search"
+            hint="Press / to jump here, or Ctrl/Cmd+K for the quick palette."
+          />
         </Card>
       )}
 
-      <div className="flex flex-col gap-4">
-        {results.goals.length > 0 && (
-          <Card title="Goals" hint={`${results.goals.length}`}>
-            <ul className="flex flex-col gap-1 text-[13px]">
-              {results.goals.map((goal) => (
-                <li key={goal.id}>
-                  <Link href={`/tasks?goal=${goal.id}`} className="hover:text-accent">
-                    {goal.title}
-                  </Link>
-                  <span className="ml-2 text-[11px] text-muted">
-                    {goal.task_done}/{goal.task_total} tasks
+      {q && hits.length === 0 && (
+        <Card>
+          <EmptyState title="No matches" hint="Try a shorter word — the last one is matched as a prefix." />
+        </Card>
+      )}
+
+      {hits.length > 0 && (
+        <Card bodyClassName="p-1.5">
+          <ul className="flex flex-col">
+            {hits.map((hit) => (
+              <li key={`${hit.kind}-${hit.id}`}>
+                <Link href={hit.href} className="flex gap-2.5 rounded-lg px-2 py-2 transition hover:bg-surface-2">
+                  <span className="shrink-0 text-[15px] leading-5" aria-hidden>
+                    {hit.icon || (hit.kind === "note" ? "📄" : "•")}
                   </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-
-        {results.projects.length > 0 && (
-          <Card title="Projects" hint={`${results.projects.length}`}>
-            <ul className="flex flex-col gap-1 text-[13px]">
-              {results.projects.map((project) => (
-                <li key={project.id}>
-                  <Link href={`/tasks?project=${project.id}`} className="hover:text-accent">
-                    {project.title}
-                  </Link>
-                  <span className="ml-2 text-[11px] text-muted">{project.goal_title ?? "no goal"}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-
-        {results.tasks.length > 0 && (
-          <Card title="Tasks" hint={`${results.tasks.length}`}>
-            <TaskList tasks={results.tasks} today={today} />
-          </Card>
-        )}
-
-        {results.notes.length > 0 && (
-          <Card title="Notes" hint={`${results.notes.length}`}>
-            <ul className="flex flex-col gap-2">
-              {results.notes.map((note) => (
-                <li key={note.id}>
-                  <Link href={`/notes/${note.id}`} className="block rounded-lg px-2 py-1.5 hover:bg-surface-2">
-                    <p className="text-[13px]">{note.title}</p>
-                    <p className="line-clamp-2 text-[11.5px] text-muted">{note.content.slice(0, 200)}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        )}
-      </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[13.5px] font-medium">{hit.title || "Untitled"}</span>
+                      <span className="chip chip-plain">{KIND_LABEL[hit.kind]}</span>
+                      {hit.context && <span className="text-[11px] text-muted">{hit.context}</span>}
+                    </span>
+                    <Snippet text={hit.snippet} />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
     </div>
   );
 }

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { all, get, run, tx } from "./db";
-import type { Note, Task, TaskStatus } from "./types";
+import { getGoal, listNotes, listTasks, searchAll, type SearchHit } from "./queries";
+import { TASK_STATUSES, type Note, type Task, type TaskStatus } from "./types";
 import { addDaysISO, newId, nowISO, todayISO } from "./util";
 
 function touch() {
@@ -625,10 +626,25 @@ export interface NoteInput {
   content?: string;
   kind?: string;
   date?: string | null;
+  parent_id?: string | null;
+  icon?: string | null;
+  cover?: string | null;
+  position?: number;
   project_id?: string | null;
   goal_id?: string | null;
   task_id?: string | null;
   tags?: string[];
+}
+
+/** Next free slot among a parent's children, so a new page lands at the bottom. */
+function nextNotePosition(parentId: string | null): number {
+  const row = get<{ next: number }>(
+    parentId
+      ? "SELECT COALESCE(MAX(position), -1) + 1 AS next FROM notes WHERE parent_id = ?"
+      : "SELECT COALESCE(MAX(position), -1) + 1 AS next FROM notes WHERE parent_id IS NULL",
+    ...(parentId ? [parentId] : []),
+  );
+  return row?.next ?? 0;
 }
 
 export async function createNote(input: NoteInput): Promise<string> {
@@ -636,14 +652,18 @@ export async function createNote(input: NoteInput): Promise<string> {
   const now = nowISO();
   tx(() => {
     run(
-      `INSERT INTO notes(id, title, content, kind, date, project_id, goal_id, task_id,
-         created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO notes(id, title, content, kind, date, parent_id, icon, cover, position,
+         project_id, goal_id, task_id, created_at, updated_at)
+       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.title?.trim() || "Untitled note",
       input.content ?? "",
       input.kind ?? "quick",
       input.date || null,
+      input.parent_id || null,
+      input.icon || null,
+      input.cover || null,
+      input.position ?? nextNotePosition(input.parent_id || null),
       input.project_id || null,
       input.goal_id || null,
       input.task_id || null,
@@ -661,7 +681,10 @@ export async function createNote(input: NoteInput): Promise<string> {
 }
 
 export async function updateNote(id: string, patch: NoteInput): Promise<void> {
-  const columns = ["title", "content", "kind", "date", "project_id", "goal_id", "task_id"];
+  const columns = [
+    "title", "content", "kind", "date", "parent_id", "icon", "cover", "position",
+    "project_id", "goal_id", "task_id",
+  ];
   tx(() => {
     const sets: string[] = [];
     const values: unknown[] = [];
@@ -707,6 +730,153 @@ export async function deleteNote(id: string) {
   touch();
 }
 
+/** True when `candidate` sits inside `id`'s subtree — a move there would orphan it. */
+function isDescendant(id: string, candidate: string): boolean {
+  const seen = new Set<string>();
+  let cursor: string | null = candidate;
+  while (cursor && !seen.has(cursor)) {
+    if (cursor === id) return true;
+    seen.add(cursor);
+    const row: { parent_id: string | null } | undefined = get(
+      "SELECT parent_id FROM notes WHERE id = ?",
+      cursor,
+    );
+    cursor = row?.parent_id ?? null;
+  }
+  return false;
+}
+
+/** Renumber one parent's children 0..n so later inserts have room. */
+function resequence(parentId: string | null) {
+  const children = all<{ id: string }>(
+    parentId
+      ? "SELECT id FROM notes WHERE parent_id = ? ORDER BY position, created_at"
+      : "SELECT id FROM notes WHERE parent_id IS NULL ORDER BY position, created_at",
+    ...(parentId ? [parentId] : []),
+  );
+  children.forEach((child, index) => run("UPDATE notes SET position = ? WHERE id = ?", index, child.id));
+}
+
+/** Move a page under a new parent, optionally dropping it before a given sibling. */
+export async function moveNote(
+  id: string,
+  parentId: string | null,
+  beforeId: string | null = null,
+): Promise<boolean> {
+  if (id === parentId) return false;
+  if (parentId && isDescendant(id, parentId)) return false;
+  tx(() => {
+    const previous = get<{ parent_id: string | null }>("SELECT parent_id FROM notes WHERE id = ?", id);
+    run(
+      "UPDATE notes SET parent_id = ?, position = ?, updated_at = ? WHERE id = ?",
+      parentId,
+      nextNotePosition(parentId),
+      nowISO(),
+      id,
+    );
+    if (beforeId && beforeId !== id) {
+      const siblings = all<{ id: string }>(
+        parentId
+          ? "SELECT id FROM notes WHERE parent_id = ? ORDER BY position, created_at"
+          : "SELECT id FROM notes WHERE parent_id IS NULL ORDER BY position, created_at",
+        ...(parentId ? [parentId] : []),
+      ).map((row) => row.id);
+      const ordered = siblings.filter((sibling) => sibling !== id);
+      const target = ordered.indexOf(beforeId);
+      ordered.splice(target === -1 ? ordered.length : target, 0, id);
+      ordered.forEach((sibling, index) =>
+        run("UPDATE notes SET position = ? WHERE id = ?", index, sibling),
+      );
+    }
+    if (previous && previous.parent_id !== parentId) resequence(previous.parent_id);
+  });
+  touch();
+  return true;
+}
+
+/** Copy a page and everything under it. Returns the new root page's id. */
+export async function duplicateNote(id: string, parentId?: string | null): Promise<string | null> {
+  const source = get<Note>("SELECT * FROM notes WHERE id = ?", id);
+  if (!source) return null;
+
+  const copySubtree = (note: Note, parent: string | null, title: string): string => {
+    const newNoteId = newId();
+    const now = nowISO();
+    run(
+      `INSERT INTO notes(id, title, content, kind, date, parent_id, icon, cover, position,
+         project_id, goal_id, task_id, pinned, archived, created_at, updated_at)
+       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+      newNoteId,
+      title,
+      note.content,
+      note.kind,
+      note.date,
+      parent,
+      note.icon,
+      note.cover,
+      nextNotePosition(parent),
+      note.project_id,
+      note.goal_id,
+      note.task_id,
+      note.archived,
+      now,
+      now,
+    );
+    for (const tag of all<{ tag_id: string }>("SELECT tag_id FROM note_tags WHERE note_id = ?", note.id)) {
+      run("INSERT OR IGNORE INTO note_tags(note_id, tag_id) VALUES(?, ?)", newNoteId, tag.tag_id);
+    }
+    syncNoteLinks(newNoteId, note.content);
+    for (const child of all<Note>(
+      "SELECT * FROM notes WHERE parent_id = ? ORDER BY position, created_at",
+      note.id,
+    )) {
+      copySubtree(child, newNoteId, child.title);
+    }
+    return newNoteId;
+  };
+
+  const copyId = tx(() =>
+    copySubtree(
+      source,
+      parentId === undefined ? source.parent_id : parentId,
+      `${source.title} (copy)`,
+    ),
+  );
+  touch();
+  return copyId;
+}
+
+/** Create a page nested under another one and return its id. */
+export async function createChildNote(parentId: string, title = "Untitled"): Promise<string> {
+  const parent = get<Note>("SELECT * FROM notes WHERE id = ?", parentId);
+  return createNote({
+    title,
+    parent_id: parentId,
+    project_id: parent?.project_id ?? null,
+    goal_id: parent?.goal_id ?? null,
+  });
+}
+
+/** Emoji icon and preset cover live on the page itself; null clears them. */
+export async function setNoteAppearance(
+  id: string,
+  patch: { icon?: string | null; cover?: string | null },
+): Promise<void> {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  if ("icon" in patch) {
+    sets.push("icon = ?");
+    values.push(patch.icon || null);
+  }
+  if ("cover" in patch) {
+    sets.push("cover = ?");
+    values.push(patch.cover || null);
+  }
+  if (!sets.length) return;
+  run(`UPDATE notes SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`, ...values, nowISO(), id);
+  touch();
+}
+
 /** Turn one line of a note into a task, keeping the note's project/goal context. */
 export async function noteLineToTask(
   noteId: string,
@@ -739,6 +909,99 @@ export async function ensureDailyNote(date: string): Promise<string> {
     date,
     content: `## Intentions\n\n## Log\n\n## Ideas\n`,
   });
+}
+
+/* ---------------------------------------------------------- note embeds */
+
+export interface EmbeddedTask {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  due_date: string | null;
+  scheduled_date: string | null;
+  estimate_minutes: number | null;
+  project_title: string | null;
+  project_color: string | null;
+}
+
+export interface EmbeddedGoal {
+  id: string;
+  title: string;
+  status: string;
+  metric: string | null;
+  target_date: string | null;
+  task_done: number;
+  task_total: number;
+  minutes_logged: number;
+}
+
+/** Live tasks for a `::tasks` block. Empty filters mean "this page's project". */
+export async function embedTasks(filter: {
+  projectId?: string | null;
+  goalId?: string | null;
+  status?: string | null;
+  limit?: number;
+}): Promise<EmbeddedTask[]> {
+  const status = (filter.status ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value): value is TaskStatus => TASK_STATUSES.includes(value as TaskStatus));
+
+  const tasks = listTasks({
+    projectId: filter.projectId || undefined,
+    goalId: filter.goalId || undefined,
+    status: status.length ? status : undefined,
+    includeDone: status.includes("done") || !status.length,
+    parentId: null,
+    limit: Math.min(Math.max(filter.limit ?? 8, 1), 50),
+  });
+
+  return tasks.map((task) => ({
+    id: task.id,
+    title: task.title,
+    status: task.status,
+    due_date: task.due_date,
+    scheduled_date: task.scheduled_date,
+    estimate_minutes: task.estimate_minutes,
+    project_title: task.project_title,
+    project_color: task.project_color,
+  }));
+}
+
+/** Live progress for a `::goal` block. */
+export async function embedGoal(goalId: string): Promise<EmbeddedGoal | null> {
+  const goal = goalId ? getGoal(goalId) : undefined;
+  if (!goal) return null;
+  return {
+    id: goal.id,
+    title: goal.title,
+    status: goal.status,
+    metric: goal.metric,
+    target_date: goal.target_date,
+    task_done: goal.task_done,
+    task_total: goal.task_total,
+    minutes_logged: goal.minutes_logged,
+  };
+}
+
+/* -------------------------------------------------------------- palette */
+
+/** Ranked search for the command palette. */
+export async function searchCommand(query: string): Promise<SearchHit[]> {
+  return searchAll(query, 20);
+}
+
+/** What the palette offers before anything is typed. */
+export async function recentTargets(): Promise<SearchHit[]> {
+  return listNotes({ limit: 8 }).map((note) => ({
+    kind: "note" as const,
+    id: note.id,
+    title: note.title || "Untitled",
+    snippet: note.content.slice(0, 120).replace(/\s+/g, " ").trim(),
+    icon: note.icon,
+    context: null,
+    href: `/notes/${note.id}`,
+  }));
 }
 
 /* ------------------------------------------------------------------- reviews */

@@ -4,14 +4,13 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { quickAdd } from "@/lib/quickadd";
-import type { Area, GoalView, ProjectView } from "@/lib/types";
+import type { Area, ProjectView } from "@/lib/types";
 import { IconPlus, IconSearch } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
 import { formatDateLong, todayISO } from "@/lib/util";
 
 const SYNTAX = [
   ["@project", "link to a project"],
-  ["~goal", "link to a goal"],
   ["/area", "Work, Health, Learning…"],
   ["#tag", "add a tag"],
   ["*", "important"],
@@ -25,12 +24,10 @@ const SYNTAX = [
 
 export function Topbar({
   areas,
-  goals,
   projects,
   nav,
 }: {
   areas: Area[];
-  goals: GoalView[];
   projects: ProjectView[];
   nav?: React.ReactNode;
 }) {
@@ -45,11 +42,12 @@ export function Topbar({
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
-      const typing = target && /^(INPUT|TEXTAREA)$/.test(target.tagName);
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        inputRef.current?.focus();
-      } else if (event.key === "/" && !typing) {
+      // Contenteditable counts as typing too, or `/` would steal the note
+      // editor's block menu.
+      const typing =
+        target && (/^(INPUT|TEXTAREA)$/.test(target.tagName) || target.isContentEditable);
+      // Cmd/Ctrl+K belongs to the command palette, which can quick-add too.
+      if (event.key === "/" && !typing) {
         event.preventDefault();
         (searchRef.current ?? inputRef.current)?.focus();
       }
@@ -140,11 +138,9 @@ export function Topbar({
                   </li>
                 ))}
               </ul>
-              {(projects.length > 0 || goals.length > 0) && (
+              {projects.length > 0 && (
                 <p className="mt-2 border-t border-line pt-2 text-[11px] text-muted">
                   {projects.slice(0, 3).map((p) => `@${p.title}`).join("  ")}
-                  {goals.length > 0 && "   "}
-                  {goals.slice(0, 2).map((g) => `~${g.title}`).join("  ")}
                   {areas.length > 0 && `   /${areas[0].name}`}
                 </p>
               )}

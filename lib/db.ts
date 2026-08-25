@@ -15,6 +15,58 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   week_starts_on: "1",
 };
 
+/** Columns added after the first release. `CREATE TABLE IF NOT EXISTS` skips an
+    existing table, so older databases need them bolted on one by one. */
+const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
+  { table: "notes", column: "parent_id", definition: "TEXT REFERENCES notes(id) ON DELETE CASCADE" },
+  { table: "notes", column: "icon", definition: "TEXT" },
+  { table: "notes", column: "cover", definition: "TEXT" },
+  { table: "notes", column: "position", definition: "INTEGER NOT NULL DEFAULT 0" },
+];
+
+/** Bump to have every row re-indexed, e.g. after a tokenizer change. */
+const SEARCH_INDEX_VERSION = "2";
+
+function migrate(db: DatabaseSync) {
+  for (const { table, column, definition } of ADDED_COLUMNS) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (columns.some((c) => c.name === column)) continue;
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+  db.exec("CREATE INDEX IF NOT EXISTS idx_notes_parent ON notes(parent_id)");
+
+  // Triggers only catch rows written from now on; anything already in the
+  // database has to be swept in once.
+  const stamp = db
+    .prepare("SELECT value FROM settings WHERE key = 'search_index_version'")
+    .get() as { value?: string } | undefined;
+  if (stamp?.value === SEARCH_INDEX_VERSION) return;
+
+  // A version bump can change the table's columns, so rebuild it from the
+  // schema rather than trying to patch a virtual table in place.
+  db.exec("DROP TABLE IF EXISTS search_index");
+  db.exec(SCHEMA);
+  const folded = (title: string, body: string) =>
+    `replace(replace(${title} || ' ' || ${body}, 'đ', 'd'), 'Đ', 'D')`;
+  db.exec(`
+    INSERT INTO search_index(kind, ref_id, title, body, fold)
+      SELECT 'note', id, title, content, ${folded("title", "content")} FROM notes;
+    INSERT INTO search_index(kind, ref_id, title, body, fold)
+      SELECT 'task', id, title, COALESCE(notes, ''),
+             ${folded("title", "COALESCE(notes, '')")} FROM tasks;
+    INSERT INTO search_index(kind, ref_id, title, body, fold)
+      SELECT 'project', id, title, COALESCE(description, ''),
+             ${folded("title", "COALESCE(description, '')")} FROM projects;
+    INSERT INTO search_index(kind, ref_id, title, body, fold)
+      SELECT 'goal', id, title, COALESCE(description, ''),
+             ${folded("title", "COALESCE(description, '')")} FROM goals;
+  `);
+  db.prepare("INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)").run(
+    "search_index_version",
+    SEARCH_INDEX_VERSION,
+  );
+}
+
 function connect(): DatabaseSync {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new DatabaseSync(DB_PATH, { timeout: 5000 });
@@ -26,6 +78,7 @@ function connect(): DatabaseSync {
   }
   db.exec("PRAGMA foreign_keys = ON;");
   db.exec(SCHEMA);
+  migrate(db);
 
   const now = new Date().toISOString();
   const setting = db.prepare("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)");

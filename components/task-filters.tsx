@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import type { Area, GoalView, ProjectView, Tag } from "@/lib/types";
+import type { Area, ProjectView, Tag } from "@/lib/types";
 import { TASK_STATUSES, STATUS_LABEL } from "@/lib/types";
 import { cn } from "@/lib/util";
 import { IconGrid, IconList, IconTarget, IconTimeline } from "./icons";
@@ -16,12 +16,10 @@ const VIEWS = [
 
 export function TaskFilters({
   areas,
-  goals,
   projects,
   tags,
 }: {
   areas: Area[];
-  goals: GoalView[];
   projects: ProjectView[];
   tags: Tag[];
 }) {
@@ -36,7 +34,7 @@ export function TaskFilters({
     router.push(`/tasks?${next.toString()}`);
   }
 
-  const hasFilter = ["status", "goal", "project", "area", "tag", "q", "bucket", "done"].some((k) =>
+  const hasFilter = ["status", "project", "area", "tag", "q", "bucket", "done"].some((k) =>
     params.get(k),
   );
 
@@ -83,20 +81,6 @@ export function TaskFilters({
         {TASK_STATUSES.map((status) => (
           <option key={status} value={status}>
             {STATUS_LABEL[status]}
-          </option>
-        ))}
-      </select>
-
-      <select
-        value={params.get("goal") ?? ""}
-        onChange={(e) => setParam("goal", e.target.value)}
-        aria-label="Filter by goal"
-        className="input w-auto max-w-[45vw] py-1.5"
-      >
-        <option value="">Any goal</option>
-        {goals.map((goal) => (
-          <option key={goal.id} value={goal.id}>
-            {goal.title}
           </option>
         ))}
       </select>

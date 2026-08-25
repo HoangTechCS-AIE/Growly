@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTask, updateTask, type TaskInput } from "@/lib/actions";
-import { TASK_STATUSES, STATUS_LABEL, type Area, type GoalView, type ProjectView, type TaskStatus, type TaskView } from "@/lib/types";
+import { TASK_STATUSES, STATUS_LABEL, type Area, type ProjectView, type TaskStatus, type TaskView } from "@/lib/types";
 import { formatClock, parseDuration } from "@/lib/util";
 
 const RECURRENCE = [
@@ -17,14 +17,12 @@ const RECURRENCE = [
 
 export function TaskForm({
   task,
-  goals,
   projects,
   areas,
   defaultDate,
   defaultStart,
 }: {
   task?: TaskView;
-  goals: GoalView[];
   projects: ProjectView[];
   areas: Area[];
   defaultDate?: string;
@@ -32,6 +30,13 @@ export function TaskForm({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // Rarely-used fields stay folded away, but never hide a value already set —
+  // including the start time a calendar slot pre-fills.
+  const [more, setMore] = useState(
+    Boolean(
+      defaultStart || task?.area_id || task?.start_min != null || task?.recurrence || task?.waiting_on,
+    ),
+  );
   const [form, setForm] = useState({
     title: task?.title ?? "",
     short_term_outcome: task?.short_term_outcome ?? "",
@@ -118,35 +123,6 @@ export function TaskForm({
           required
         />
 
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label className="label" htmlFor="sto">
-              Short-term outcome
-            </label>
-            <textarea
-              id="sto"
-              value={form.short_term_outcome}
-              onChange={(e) => set("short_term_outcome", e.target.value)}
-              placeholder="What does finishing this solve right now?"
-              rows={3}
-              className="input resize-y"
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="ltc">
-              Long-term contribution
-            </label>
-            <textarea
-              id="ltc"
-              value={form.long_term_contribution}
-              onChange={(e) => set("long_term_contribution", e.target.value)}
-              placeholder="Which long-term goal does this move, and how?"
-              rows={3}
-              className="input resize-y"
-            />
-          </div>
-        </div>
-
         <div className="mt-4">
           <label className="label" htmlFor="next">
             Next action
@@ -162,19 +138,6 @@ export function TaskForm({
       </div>
 
       <div className="card-pad grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div>
-          <label className="label" htmlFor="goal">
-            Goal
-          </label>
-          <select id="goal" value={form.goal_id} onChange={(e) => set("goal_id", e.target.value)} className="input">
-            <option value="">Inherit from project</option>
-            {goals.map((goal) => (
-              <option key={goal.id} value={goal.id}>
-                {goal.title}
-              </option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className="label" htmlFor="project">
             Project
@@ -194,20 +157,6 @@ export function TaskForm({
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="area">
-            Area
-          </label>
-          <select id="area" value={form.area_id} onChange={(e) => set("area_id", e.target.value)} className="input">
-            <option value="">Inherit</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
           <label className="label" htmlFor="status">
             Status
           </label>
@@ -224,6 +173,19 @@ export function TaskForm({
             ))}
           </select>
         </div>
+        <div>
+          <label className="label" htmlFor="estimate">
+            Estimate
+          </label>
+          <input
+            id="estimate"
+            value={form.estimate}
+            onChange={(e) => set("estimate", e.target.value)}
+            placeholder="45m · 1h30"
+            className="input"
+          />
+        </div>
+
         <div>
           <label className="label" htmlFor="scheduled">
             Scheduled day
@@ -248,50 +210,7 @@ export function TaskForm({
             className="input"
           />
         </div>
-
         <div>
-          <label className="label" htmlFor="start">
-            Start time
-          </label>
-          <input
-            id="start"
-            type="time"
-            value={form.start}
-            onChange={(e) => set("start", e.target.value)}
-            className="input"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="estimate">
-            Estimate
-          </label>
-          <input
-            id="estimate"
-            value={form.estimate}
-            onChange={(e) => set("estimate", e.target.value)}
-            placeholder="45m · 1h30"
-            className="input"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="repeat">
-            Repeat
-          </label>
-          <select
-            id="repeat"
-            value={form.recurrence}
-            onChange={(e) => set("recurrence", e.target.value)}
-            className="input"
-          >
-            {RECURRENCE.map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="md:col-span-2">
           <label className="label" htmlFor="tags">
             Tags
           </label>
@@ -300,18 +219,6 @@ export function TaskForm({
             value={form.tags}
             onChange={(e) => set("tags", e.target.value)}
             placeholder="deep-work, writing"
-            className="input"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="waiting">
-            Waiting on
-          </label>
-          <input
-            id="waiting"
-            value={form.waiting_on}
-            onChange={(e) => set("waiting_on", e.target.value)}
-            placeholder="Person or event"
             className="input"
           />
         </div>
@@ -335,7 +242,78 @@ export function TaskForm({
             />
             Urgent
           </label>
+
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost ml-auto"
+            aria-expanded={more}
+            onClick={() => setMore((open) => !open)}
+          >
+            {more ? "Fewer options" : "More options"}
+          </button>
         </div>
+
+        {more && (
+          <>
+            <div>
+              <label className="label" htmlFor="start">
+                Start time
+              </label>
+              <input
+                id="start"
+                type="time"
+                value={form.start}
+                onChange={(e) => set("start", e.target.value)}
+                className="input"
+              />
+              <p className="mt-1 text-[11px] text-muted">
+                With no estimate, a block defaults to 60 minutes.
+              </p>
+            </div>
+            <div>
+              <label className="label" htmlFor="repeat">
+                Repeat
+              </label>
+              <select
+                id="repeat"
+                value={form.recurrence}
+                onChange={(e) => set("recurrence", e.target.value)}
+                className="input"
+              >
+                {RECURRENCE.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label" htmlFor="area">
+                Area
+              </label>
+              <select id="area" value={form.area_id} onChange={(e) => set("area_id", e.target.value)} className="input">
+                <option value="">Inherit</option>
+                {areas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-3">
+              <label className="label" htmlFor="waiting">
+                Waiting on
+              </label>
+              <input
+                id="waiting"
+                value={form.waiting_on}
+                onChange={(e) => set("waiting_on", e.target.value)}
+                placeholder="Person or event"
+                className="input"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="card-pad">

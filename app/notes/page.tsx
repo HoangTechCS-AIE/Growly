@@ -22,10 +22,10 @@ export default async function NotesPage({ searchParams }: PageProps<"/notes">) {
   const tags = listTags();
 
   return (
-    <div className="mx-auto max-w-[1400px]">
+    <div>
       <PageHeader
         title="Notes"
-        subtitle="Thinking space that stays connected to projects, goals and tasks"
+        subtitle="Every page lives in the tree on the left; search and filters live here"
         actions={<NewNoteButtons />}
       />
 
@@ -79,11 +79,14 @@ export default async function NotesPage({ searchParams }: PageProps<"/notes">) {
       </div>
 
       {notes.length ? (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {notes.map((note) => (
             <Link key={note.id} href={`/notes/${note.id}`} className="card-pad transition hover:border-line-strong">
               <div className="mb-1 flex items-start justify-between gap-2">
-                <h3 className="truncate text-[13.5px] font-semibold">{note.title}</h3>
+                <h3 className="flex min-w-0 items-center gap-1.5 text-[13.5px] font-semibold">
+                  <span aria-hidden>{note.icon || "📄"}</span>
+                  <span className="truncate">{note.title}</span>
+                </h3>
                 {note.pinned === 1 && <span className="text-warn">📌</span>}
               </div>
               <p className="mb-2 line-clamp-4 whitespace-pre-wrap text-[12px] leading-relaxed text-muted">

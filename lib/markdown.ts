@@ -1,4 +1,8 @@
-/** A small Markdown subset renderer: enough for notes, no dependency. */
+/** Read-only Markdown rendering for previews and printouts.
+ *  The editable surface lives in `lib/blocks.ts`; both share one inline parser
+ *  so a note looks the same whether it is being edited or just read. */
+
+import { renderInline } from "./blocks";
 
 function escapeHtml(text: string): string {
   return text
@@ -9,24 +13,7 @@ function escapeHtml(text: string): string {
 }
 
 function inline(text: string, links: Map<string, string>): string {
-  let out = escapeHtml(text);
-  out = out.replace(/`([^`]+)`/g, "<code>$1</code>");
-  out = out.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  out = out.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
-  out = out.replace(/~~([^~]+)~~/g, "<s>$1</s>");
-  out = out.replace(
-    /\[\[([^\]]+)\]\]/g,
-    (_, title: string) => {
-      const id = links.get(title.trim().toLowerCase());
-      return id
-        ? `<a href="/notes/${id}">${title}</a>`
-        : `<span class="text-muted underline decoration-dotted" title="No note with this title yet">${title}</span>`;
-    },
-  );
-  out = out.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>');
-  out = out.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2">$2</a>');
-  out = out.replace(/(^|\s)#([\w-]+)/g, '$1<span class="chip chip-plain">#$2</span>');
-  return out;
+  return renderInline(text, links).html;
 }
 
 export function renderMarkdown(source: string, noteLinks: Map<string, string> = new Map()): string {
@@ -68,10 +55,34 @@ export function renderMarkdown(source: string, noteLinks: Map<string, string> = 
       continue;
     }
 
+    const callout = line.match(/^>\s*\[!([^\]]*)\]\s?(.*)$/);
+    if (callout) {
+      closeList();
+      html.push(
+        `<div class="prose-callout"><span>${escapeHtml(callout[1] || "💡")}</span>` +
+          `<div>${inline(callout[2], noteLinks)}</div></div>`,
+      );
+      continue;
+    }
+
     const quote = line.match(/^>\s?(.*)$/);
     if (quote) {
       closeList();
       html.push(`<blockquote>${inline(quote[1], noteLinks)}</blockquote>`);
+      continue;
+    }
+
+    const toggle = line.match(/^\s*[-*]\s+\[>\]\s+(.*)$/);
+    if (toggle) {
+      if (list !== "ul") {
+        closeList();
+        html.push('<ul class="list-none pl-0">');
+        list = "ul";
+      }
+      html.push(
+        `<li class="flex items-start gap-2"><span class="mt-[3px] text-muted">▸</span>` +
+          `<span>${inline(toggle[1], noteLinks)}</span></li>`,
+      );
       continue;
     }
 
