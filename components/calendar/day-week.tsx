@@ -146,10 +146,7 @@ export function DayWeekGrid({
                 <div
                   key={date}
                   data-day-header={date}
-                  className={cn(
-                    "min-w-0 flex-1 border-r border-line px-2 py-2.5 last:border-r-0",
-                    !single && isToday && "bg-accent/5",
-                  )}
+                  className="min-w-0 flex-1 border-r border-line px-2 py-2.5 last:border-r-0"
                 >
                   <div className="flex items-center justify-between gap-1">
                     <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.04em] text-muted">
@@ -213,10 +210,7 @@ export function DayWeekGrid({
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => dropAllDay(date, e)}
                   title="Drop a block here to keep the day but clear its time"
-                  className={cn(
-                    "flex min-h-[38px] min-w-0 flex-1 flex-col gap-1 border-r border-line p-1.5 last:border-r-0",
-                    !single && date === today && "bg-accent/5",
-                  )}
+                  className="flex min-h-[38px] min-w-0 flex-1 flex-col gap-1 border-r border-line p-1.5 last:border-r-0"
                 >
                   {items.map((task) => (
                     <DraggableChip key={task.id} task={task} />
@@ -257,10 +251,7 @@ export function DayWeekGrid({
                     onDrop={(e) => drop(date, e)}
                     onClick={(e) => openDraft(date, e)}
                     title="Click an empty slot to plan something there"
-                    className={cn(
-                      "relative min-w-0 flex-1 border-r border-line last:border-r-0",
-                      !single && date === today && "bg-accent/5",
-                    )}
+                    className="relative min-w-0 flex-1 border-r border-line last:border-r-0"
                   >
                     {hours.map((hour) => (
                       <div
