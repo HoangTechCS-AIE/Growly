@@ -1,4 +1,5 @@
-import { CalendarNav } from "@/components/calendar/nav";
+import { Suspense } from "react";
+import { CalendarNav, MobileDefaultsToDay } from "@/components/calendar/nav";
 import { DayWeekGrid } from "@/components/calendar/day-week";
 import { MonthGrid } from "@/components/calendar/month";
 import { DraggableChip } from "@/components/calendar/chip";
@@ -58,14 +59,17 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
 
   return (
     <div className="mx-auto max-w-[1500px]">
+      <Suspense fallback={null}>
+        <MobileDefaultsToDay />
+      </Suspense>
       <PageHeader
-        title="Calendar"
-        subtitle={title}
+        eyebrow="Calendar"
+        title={title}
         actions={<CalendarNav view={view} date={anchor} />}
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex min-w-0 flex-col gap-4">
           {view === "month" ? (
             <MonthGrid
               cells={dates}
@@ -92,9 +96,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
             />
           )}
 
-          {view !== "month" && (
-            <UnscheduledDayList dates={dates} tasks={scheduled} />
-          )}
+          {view !== "month" && <UnscheduledDayList dates={dates} tasks={scheduled} />}
         </div>
 
         <UnscheduledRail tasks={unscheduled} />
@@ -115,23 +117,23 @@ function UnscheduledDayList({
   if (!untimed.length) return null;
 
   return (
-    <div className="card mt-4 p-3">
-      <p className="section-title mb-2">All-day (no time block yet)</p>
-      <div className="flex gap-2">
-        <div className="w-14 shrink-0" />
-        {dates.map((date) => (
-          <div key={date} className="flex min-w-0 flex-1 flex-col gap-1">
-            {untimed
-              .filter((t) => t.scheduled_date === date)
-              .map((task) => (
+    <div className="tile">
+      <p className="tile-title">All-day · no time block yet</p>
+      <div className="flex gap-2 overflow-x-auto">
+        {dates.map((date) => {
+          const items = untimed.filter((t) => t.scheduled_date === date);
+          if (dates.length > 1 && !items.length) return <div key={date} className="min-w-0 flex-1" />;
+          return (
+            <div key={date} className="flex min-w-0 flex-1 flex-col gap-1.5">
+              {dates.length > 1 && <span className="text-[11px] font-bold text-muted">{formatDate(date)}</span>}
+              {items.map((task) => (
                 <DraggableChip key={task.id} task={task} />
               ))}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
-      <p className="mt-2 text-[11px] text-muted">
-        Drag these into the grid above to give them a time block.
-      </p>
+      <p className="text-xs text-muted">Drag these into the grid above to give them a time block.</p>
     </div>
   );
 }

@@ -1,36 +1,52 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { cn } from "@/lib/util";
+import { cn, dotTone } from "@/lib/util";
+import { IconArrowRight } from "./icons";
 
-export function Card({
+/* ---------------------------------------------------------------- tiles -- */
+
+/** The bento building block: a rounded surface with an optional small-caps
+    title row. `accent` paints it deep green for the one thing that matters. */
+export function Tile({
   title,
   hint,
   action,
   children,
   className,
-  bodyClassName,
+  accent = false,
+  small = false,
+  as: Tag = "section",
 }: {
   title?: ReactNode;
   hint?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
-  bodyClassName?: string;
+  accent?: boolean;
+  small?: boolean;
+  as?: "section" | "div" | "article";
 }) {
   return (
-    <section className={cn("card flex min-w-0 flex-col", className)}>
+    <Tag className={cn("tile", small && "tile-sm", accent && "tile-accent", className)}>
       {(title || action) && (
-        <header className="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+        <header className="tile-head">
           <div className="min-w-0">
-            <h2 className="truncate text-[13px] font-semibold text-ink">{title}</h2>
-            {hint && <p className="truncate text-[11px] text-muted">{hint}</p>}
+            {title && <h2 className="tile-title">{title}</h2>}
+            {hint && <p className={cn("tile-hint mt-0.5", accent && "text-accent-deep-ink/70")}>{hint}</p>}
           </div>
-          {action && <div className="shrink-0">{action}</div>}
+          {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
         </header>
       )}
-      <div className={cn("min-w-0 p-3", bodyClassName)}>{children}</div>
-    </section>
+      {children}
+    </Tag>
   );
+}
+
+/** Older name, same thing. */
+export function Card(props: Parameters<typeof Tile>[0] & { bodyClassName?: string }) {
+  const { bodyClassName: _ignored, ...rest } = props;
+  void _ignored;
+  return <Tile {...rest} />;
 }
 
 /** A headline number. `tone` carries severity, never decoration. */
@@ -40,12 +56,14 @@ export function StatTile({
   sub,
   tone = "neutral",
   href,
+  className,
 }: {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
   tone?: "neutral" | "good" | "warn" | "bad";
   href?: string;
+  className?: string;
 }) {
   const toneClass = {
     neutral: "text-ink",
@@ -56,23 +74,25 @@ export function StatTile({
 
   const body = (
     <>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted">{label}</p>
-      <p className={cn("mt-1 text-[26px] font-semibold leading-none tabular-nums", toneClass)}>
+      <p className="tile-title">{label}</p>
+      <p className={cn("text-3xl font-extrabold leading-none tracking-tight tabular-nums", toneClass)}>
         {value}
       </p>
-      {sub && <p className="mt-1.5 text-[11.5px] text-muted">{sub}</p>}
+      {sub && <p className="text-xs text-muted">{sub}</p>}
     </>
   );
 
   if (href) {
     return (
-      <Link href={href} className="card-pad transition hover:border-line-strong">
+      <Link href={href} className={cn("tile tile-sm gap-2 transition hover:border-line-strong", className)}>
         {body}
       </Link>
     );
   }
-  return <div className="card-pad">{body}</div>;
+  return <div className={cn("tile tile-sm gap-2", className)}>{body}</div>;
 }
+
+/* --------------------------------------------------------------- meters -- */
 
 /** A single ratio against a limit. The fill carries severity. */
 export function Meter({
@@ -91,11 +111,57 @@ export function Meter({
     accent: "bg-accent",
     warn: "bg-warn",
     danger: "bg-danger",
-    muted: "bg-muted",
+    muted: "bg-line-strong",
   }[tone];
   return (
-    <div className={cn("h-1.5 w-full overflow-hidden rounded-full bg-surface-3", className)}>
-      <div className={cn("h-full rounded-full transition-all", fill)} style={{ width: `${share}%` }} />
+    <div className={cn("bar", className)} role="img" aria-label={`${share}%`}>
+      <span className={fill} style={{ width: `${share}%` }} />
+    </div>
+  );
+}
+
+/** A ring gauge with the percentage in the middle. */
+export function Ring({
+  value,
+  max,
+  size = 112,
+  stroke = 11,
+  tone = "accent",
+  label,
+  className,
+}: {
+  value: number;
+  max: number;
+  size?: number;
+  stroke?: number;
+  tone?: "accent" | "warn" | "danger";
+  label?: ReactNode;
+  className?: string;
+}) {
+  const share = max > 0 ? Math.min(1, value / max) : 0;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const color = { accent: "var(--accent)", warn: "var(--warn)", danger: "var(--danger)" }[tone];
+  return (
+    <div className={cn("relative shrink-0", className)} style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--surface-3)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${circumference * share} ${circumference}`}
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          className="transition-all"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-xl font-extrabold tracking-tight tabular-nums">
+        {label ?? `${Math.round(share * 100)}%`}
+      </div>
     </div>
   );
 }
@@ -104,7 +170,7 @@ export function Meter({
 export function MiniBars({
   data,
   unit = "",
-  height = 84,
+  height = 64,
 }: {
   data: { label: string; value: number; emphasis?: boolean; title?: string }[];
   unit?: string;
@@ -113,27 +179,27 @@ export function MiniBars({
   const max = Math.max(1, ...data.map((d) => d.value));
   return (
     <div>
-      <div className="flex items-end gap-[3px]" style={{ height }}>
+      <div className="flex items-end gap-1.5" style={{ height }}>
         {data.map((d, i) => (
           <div key={`${d.label}-${i}`} className="flex h-full flex-1 flex-col justify-end">
             <div
               title={d.title ?? `${d.label}: ${d.value}${unit}`}
               className={cn(
-                "w-full rounded-t-[4px] transition-all",
-                d.emphasis ? "bg-accent" : "bg-accent/35",
+                "w-full rounded-[6px] transition-all",
+                d.value > 0 ? (d.emphasis ? "bg-accent" : "bg-accent/40") : "bg-surface-3",
               )}
-              style={{ height: `${Math.max(d.value > 0 ? 3 : 1, (d.value / max) * 100)}%` }}
+              style={{ height: d.value > 0 ? `${Math.max(8, (d.value / max) * 100)}%` : 4 }}
             />
           </div>
         ))}
       </div>
-      <div className="mt-1.5 flex gap-[3px] border-t border-line pt-1.5">
+      <div className="mt-2 flex gap-1.5">
         {data.map((d, i) => (
           <span
             key={`${d.label}-label-${i}`}
             className={cn(
-              "flex-1 text-center text-[10px] tabular-nums",
-              d.emphasis ? "font-semibold text-ink" : "text-muted",
+              "flex-1 text-center text-[11px] tabular-nums",
+              d.emphasis ? "font-bold text-ink" : "text-muted",
             )}
           >
             {d.label}
@@ -144,20 +210,81 @@ export function MiniBars({
   );
 }
 
+/* --------------------------------------------------------------- pieces -- */
+
+/** The product's core relationship, spelled out: project → goal. */
+export function Ladder({
+  project,
+  projectColor,
+  goal,
+  area,
+  className,
+  onDark = false,
+}: {
+  project?: string | null;
+  projectColor?: string | null;
+  goal?: string | null;
+  area?: string | null;
+  className?: string;
+  onDark?: boolean;
+}) {
+  const parts: ReactNode[] = [];
+  if (project) {
+    parts.push(
+      <span key="project" className="inline-flex min-w-0 items-center gap-1.5">
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotTone(projectColor))} />
+        <span className="truncate">{project}</span>
+      </span>,
+    );
+  } else if (area) {
+    parts.push(
+      <span key="area" className="truncate">
+        {area}
+      </span>,
+    );
+  }
+  if (goal) {
+    parts.push(
+      <span key="goal" className="truncate">
+        {goal}
+      </span>,
+    );
+  } else {
+    parts.push(
+      <span key="nogoal" className={cn("truncate", onDark ? "text-accent-deep-ink/70" : "text-warn")}>
+        No goal yet
+      </span>,
+    );
+  }
+
+  return (
+    <span className={cn("ladder", onDark && "text-accent-deep-ink/75", className)}>
+      {parts.map((part, index) => (
+        <span key={index} className="contents">
+          {index > 0 && <IconArrowRight className={cn(onDark && "text-accent-deep-ink/40")} />}
+          {part}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 export function EmptyState({
   title,
   hint,
   action,
+  compact = false,
 }: {
   title: string;
   hint?: string;
   action?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-      <p className="text-[13px] font-medium text-ink">{title}</p>
-      {hint && <p className="max-w-sm text-[12px] leading-relaxed text-muted">{hint}</p>}
-      {action}
+    <div className={cn("flex flex-col items-center gap-2 px-4 text-center", compact ? "py-4" : "py-8")}>
+      <p className="text-sm font-semibold text-ink">{title}</p>
+      {hint && <p className="max-w-sm text-xs leading-relaxed text-muted">{hint}</p>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }
@@ -165,19 +292,48 @@ export function EmptyState({
 export function PageHeader({
   title,
   subtitle,
+  eyebrow,
   actions,
 }: {
-  title: string;
+  title: ReactNode;
   subtitle?: ReactNode;
+  eyebrow?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="text-[19px] font-semibold tracking-tight text-ink">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-[12.5px] text-muted">{subtitle}</p>}
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        {eyebrow && <p className="text-sm font-semibold text-muted">{eyebrow}</p>}
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink lg:text-4xl">{title}</h1>
+        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Segmented control made of links — for server components. */
+export function SegLinks({
+  items,
+  value,
+  className,
+}: {
+  items: { key: string; label: ReactNode; href: string }[];
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("seg", className)}>
+      {items.map((item) => (
+        <Link
+          key={item.key}
+          href={item.href}
+          aria-current={value === item.key ? "page" : undefined}
+          className={cn("seg-btn", value === item.key && "seg-on")}
+        >
+          {item.label}
+        </Link>
+      ))}
     </div>
   );
 }

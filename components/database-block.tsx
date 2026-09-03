@@ -12,6 +12,7 @@ import {
   type PropertyType, type Sort, type ViewKind,
 } from "@/lib/db-schema";
 import { cn, monthGrid, todayISO } from "@/lib/util";
+import { IconCheck } from "./icons";
 import { Popover } from "./popover";
 
 const VIEWS: { key: ViewKind; label: string }[] = [
@@ -96,7 +97,7 @@ function SelectEditor({
             onClick={() => toggle(option.id)}
           >
             <span className={`db-chip tone-chip tone-${option.color}`}>{option.name}</span>
-            {chosen.includes(option.id) && <span aria-hidden>✓</span>}
+            {chosen.includes(option.id) && <IconCheck className="h-3.5 w-3.5 text-accent" strokeWidth={2.5} aria-hidden />}
           </button>
         ))}
         {query.trim() && !exact && (
@@ -149,7 +150,7 @@ function Cell({
         className={cn("nb-check", value === true && "nb-check-on")}
         onClick={() => onChange(value !== true)}
       >
-        {value === true ? "✓" : ""}
+        {value === true ? <IconCheck className="h-3 w-3" strokeWidth={3} /> : null}
       </button>
     );
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/util";
+import { IconMonitor, IconMoon, IconSun } from "./icons";
 
 type Theme = "system" | "light" | "dark";
 
@@ -37,18 +38,17 @@ export function ThemeToggle({ className }: { className?: string }) {
     applyTheme(next);
   }
 
+  const Icon = !mounted ? IconMonitor : theme === "light" ? IconSun : theme === "dark" ? IconMoon : IconMonitor;
+
   return (
     <button
       type="button"
       onClick={cycle}
-      className={cn("btn btn-sm btn-ghost", className)}
+      className={cn("btn btn-outline btn-icon", className)}
       title={LABEL[theme]}
       aria-label={`${LABEL[theme]}. Activate to change the theme.`}
     >
-      <span aria-hidden="true" className="text-[13px] leading-none">
-        {!mounted ? "◐" : theme === "light" ? "☀" : theme === "dark" ? "☾" : "◐"}
-      </span>
-      <span className="sr-only">Theme</span>
+      <Icon className="h-[18px] w-[18px]" />
     </button>
   );
 }

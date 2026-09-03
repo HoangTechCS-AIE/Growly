@@ -39,7 +39,7 @@ export function Board({ tasks, today }: { tasks: TaskView[]; today: string }) {
   }
 
   return (
-    <div className="-mx-3 flex snap-x gap-3 overflow-x-auto px-3 pb-2 sm:-mx-5 sm:px-5 xl:mx-0 xl:grid xl:grid-cols-5 xl:overflow-visible xl:px-0">
+    <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 xl:mx-0 xl:grid xl:grid-cols-5 xl:overflow-visible xl:px-0">
       {TASK_STATUSES.map((status) => {
         const column = tasks.filter((t) => t.status === status);
         return (
@@ -58,42 +58,34 @@ export function Board({ tasks, today }: { tasks: TaskView[]; today: string }) {
               if (id) move(id, status);
             }}
             className={cn(
-              "flex min-h-[180px] w-[80vw] max-w-[300px] shrink-0 snap-start flex-col rounded-xl",
-              "border bg-surface/60 transition sm:w-[300px] xl:w-auto xl:max-w-none xl:shrink",
-              dragOver === status ? "border-accent/60 bg-surface-2" : "border-line",
+              "flex min-h-[220px] w-[82vw] max-w-[320px] shrink-0 snap-start flex-col gap-2 rounded-tile border p-2.5 transition sm:w-[300px] xl:w-auto xl:max-w-none xl:shrink",
+              dragOver === status ? "border-accent bg-accent/5" : "border-transparent bg-surface-2/70",
             )}
           >
-            <header className="flex items-baseline justify-between gap-2 border-b border-line px-3 py-2">
+            <header className="flex items-start justify-between gap-2 px-1.5 pt-1">
               <div>
-                <h3 className="text-[12.5px] font-semibold">{STATUS_LABEL[status]}</h3>
-                <p className="text-[10.5px] text-muted">{COLUMN_HINT[status]}</p>
+                <h3 className="text-sm font-bold">{STATUS_LABEL[status]}</h3>
+                <p className="text-xs text-muted">{COLUMN_HINT[status]}</p>
               </div>
-              <span className="text-[11px] tabular-nums text-muted">{column.length}</span>
+              <span className="tag tabular-nums">{column.length}</span>
             </header>
 
-            <div className="flex flex-1 flex-col gap-1 p-1.5">
+            <div className="flex flex-1 flex-col gap-2">
               {column.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  today={today}
-                  draggable
-                  className="border-line/70 bg-surface"
-                />
+                <TaskRow key={task.id} task={task} today={today} draggable compact />
               ))}
             </div>
 
-            <div className="p-1.5">
-              <input
-                value={draft[status] ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, [status]: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") add(status);
-                }}
-                placeholder="+ Add task"
-                className="w-full rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-[12.5px] text-ink placeholder:text-muted/60 outline-none transition hover:border-line focus:border-line-strong focus:bg-surface-2"
-              />
-            </div>
+            <input
+              value={draft[status] ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, [status]: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") add(status);
+              }}
+              placeholder="+ Add task"
+              aria-label={`Add a task to ${STATUS_LABEL[status]}`}
+              className="input input-sm rounded-full border-transparent bg-transparent hover:bg-surface focus:bg-surface"
+            />
           </div>
         );
       })}

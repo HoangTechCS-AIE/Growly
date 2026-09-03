@@ -7,6 +7,7 @@ import {
   embedGoal, embedTasks, toggleTaskDone, type EmbeddedGoal, type EmbeddedTask,
 } from "@/lib/actions";
 import { parseParams, stringifyParams } from "@/lib/blocks";
+import { IconCheck } from "./icons";
 import { STATUS_LABEL, TASK_STATUSES, type ProjectView, type TaskStatus } from "@/lib/types";
 import { chipTone, cn, formatDuration, relativeDay, todayISO } from "@/lib/util";
 
@@ -136,7 +137,7 @@ export function TasksEmbed({
                   className={cn("nb-check", done && "nb-check-on")}
                   onClick={() => toggle(task)}
                 >
-                  {done ? "✓" : ""}
+                  {done ? <IconCheck className="h-3 w-3" strokeWidth={3} /> : null}
                 </button>
                 <Link href={`/tasks/${task.id}`} className={cn("nb-embed-title", done && "nb-embed-done")}>
                   {task.title}

@@ -1,16 +1,34 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createNote, ensureDailyNote } from "@/lib/actions";
 import { NOTE_TEMPLATES } from "@/lib/markdown";
 import { todayISO } from "@/lib/util";
-import { IconPlus } from "./icons";
+import { IconChevronDown, IconPlus } from "./icons";
 
 export function NewNoteButtons({ projectId, goalId }: { projectId?: string; goalId?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", dismiss);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", dismiss);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   function create(title: string, content: string, kind: string) {
     setOpen(false);
@@ -27,10 +45,10 @@ export function NewNoteButtons({ projectId, goalId }: { projectId?: string; goal
   }
 
   return (
-    <div className="relative flex items-center gap-2">
+    <div ref={menuRef} className="relative flex items-center gap-2">
       <button
         type="button"
-        className="btn"
+        className="btn btn-outline"
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
@@ -42,8 +60,16 @@ export function NewNoteButtons({ projectId, goalId }: { projectId?: string; goal
         Daily note
       </button>
 
-      <button type="button" className="btn" onClick={() => setOpen((o) => !o)} disabled={pending}>
+      <button
+        type="button"
+        className="btn btn-outline"
+        onClick={() => setOpen((o) => !o)}
+        disabled={pending}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
         From template
+        <IconChevronDown className="h-4 w-4" />
       </button>
 
       <button
@@ -52,18 +78,22 @@ export function NewNoteButtons({ projectId, goalId }: { projectId?: string; goal
         disabled={pending}
         onClick={() => create("Untitled note", "", "quick")}
       >
-        <IconPlus className="h-3.5 w-3.5" />
+        <IconPlus className="h-4 w-4" />
         New note
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-56 rounded-xl border border-line bg-surface p-1 shadow-2xl shadow-black/40">
+        <div
+          role="menu"
+          className="absolute top-full right-0 z-40 mt-2 w-60 rounded-[16px] border border-line bg-surface p-1.5 shadow-[var(--shadow)]"
+        >
           {NOTE_TEMPLATES.map((template) => (
             <button
               key={template.key}
               type="button"
+              role="menuitem"
               onClick={() => create(template.title, template.content, template.key === "meeting" ? "meeting" : "template")}
-              className="block w-full rounded-lg px-2.5 py-1.5 text-left text-[13px] text-muted transition hover:bg-surface-2 hover:text-ink cursor-pointer"
+              className="block w-full cursor-pointer rounded-[10px] px-3 py-2 text-left text-sm font-medium text-ink transition hover:bg-surface-2"
             >
               {template.label}
             </button>

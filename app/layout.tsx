@@ -1,14 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { CommandPalette } from "@/components/command-palette";
-import { MobileNav, Sidebar } from "@/components/nav";
+import { BottomNav, Rail } from "@/components/nav";
 import { Topbar } from "@/components/topbar";
 import { THEME_SCRIPT } from "@/components/theme-toggle";
 import { listAreas, listProjects, listTasks } from "@/lib/queries";
 import { todayISO } from "@/lib/util";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin", "latin-ext", "vietnamese"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -19,9 +23,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0b0e" },
+    { media: "(prefers-color-scheme: light)", color: "#f1f0ec" },
+    { media: "(prefers-color-scheme: dark)", color: "#141513" },
   ],
 };
 
@@ -40,7 +45,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+      className={`${jakarta.variable} ${geistMono.variable} h-full`}
       // The pre-paint script stamps data-theme before React hydrates.
       suppressHydrationWarning
     >
@@ -49,23 +54,23 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:border focus:border-line focus:bg-surface focus:px-3 focus:py-2 focus:text-[13px]"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-full focus:border focus:border-line focus:bg-surface focus:px-4 focus:py-2 focus:text-sm"
         >
           Skip to content
         </a>
         <div className="flex min-h-screen">
-          <Sidebar counts={counts} />
+          <Rail counts={counts} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar
-              areas={areas}
-              projects={projects}
-              nav={<MobileNav key="mobile-nav" counts={counts} />}
-            />
-            <main id="main" className="min-w-0 flex-1 px-3 py-4 sm:px-5 lg:px-6 lg:py-5">
+            <Topbar areas={areas} projects={projects} />
+            <main
+              id="main"
+              className="min-w-0 flex-1 px-4 pt-2 pb-[calc(84px+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:pt-3 lg:pb-8"
+            >
               {children}
             </main>
           </div>
         </div>
+        <BottomNav counts={counts} />
         <CommandPalette />
       </body>
     </html>

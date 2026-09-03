@@ -8,7 +8,7 @@ import {
 } from "@/lib/actions";
 import type { NoteTreeItem } from "@/lib/types";
 import { cn } from "@/lib/util";
-import { IconPlus, IconSearch } from "./icons";
+import { IconChevronRight, IconMore, IconNote, IconPlus, IconSearch } from "./icons";
 import { Popover } from "./popover";
 
 interface TreeNode extends NoteTreeItem {
@@ -214,11 +214,11 @@ export function NoteTree({ items }: { items: NoteTreeItem[] }) {
             aria-expanded={expanded}
             onClick={() => node.child_count > 0 && toggle(node.id)}
           >
-            ▸
+            <IconChevronRight />
           </button>
 
           <Link href={`/notes/${node.id}`} className="nt-link">
-            <span className="nt-icon">{node.icon || "📄"}</span>
+            <span className="nt-icon" aria-hidden>{node.icon || <IconNote />}</span>
             <span className="truncate">{node.title || "Untitled"}</span>
           </Link>
 
@@ -235,7 +235,7 @@ export function NoteTree({ items }: { items: NoteTreeItem[] }) {
                 setMenuFor((current) => (current?.id === node.id ? null : { id: node.id, anchor }));
               }}
             >
-              ⋯
+              <IconMore />
             </button>
             <button
               type="button"
@@ -245,7 +245,7 @@ export function NoteTree({ items }: { items: NoteTreeItem[] }) {
               disabled={pending}
               onClick={() => addChild(node.id)}
             >
-              +
+              <IconPlus />
             </button>
           </span>
 
@@ -327,7 +327,7 @@ export function NoteTree({ items }: { items: NoteTreeItem[] }) {
   return (
     <div className="nt-panel">
       <div className="nt-search">
-        <IconSearch className="h-3.5 w-3.5 shrink-0 text-muted" />
+        <IconSearch className="h-4 w-4 shrink-0 text-muted" />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -356,9 +356,9 @@ export function NoteTree({ items }: { items: NoteTreeItem[] }) {
           setDropTarget(null);
         }}
       >
-        <span className="section-title">Pages</span>
+        <span className="tile-title">Pages</span>
         <button type="button" className="nt-action" title="New page" aria-label="New page" disabled={pending} onClick={addRoot}>
-          <IconPlus className="h-3 w-3" />
+          <IconPlus />
         </button>
       </div>
 
@@ -366,7 +366,7 @@ export function NoteTree({ items }: { items: NoteTreeItem[] }) {
         {tree.length ? (
           <ul>{tree.map(renderNode)}</ul>
         ) : (
-          <p className="px-2 py-3 text-[12px] text-muted">No pages yet.</p>
+          <p className="px-2 py-3 text-sm text-muted">No pages yet.</p>
         )}
       </nav>
 

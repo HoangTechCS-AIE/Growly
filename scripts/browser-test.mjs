@@ -2,7 +2,7 @@
  * Browser checks — the parts a server-side test cannot reach: quick add,
  * completing a task, dragging on the board and on the calendar, the block note
  * editor (shortcuts, slash menu, IME input, sub-pages, undo, block selection),
- * the mobile drawer, the
+ * the mobile More sheet, the
  * theme toggle and colour contrast.
  *
  * It needs Chrome and puppeteer-core, and a server pointed at a throwaway
@@ -829,7 +829,7 @@ expect(Boolean(starred) && big3.includes(starred), `starring adds "${starred}" t
 
 console.log("\nResponsive, theme and contrast");
 
-/* ---------------------------------------------------------- mobile drawer -- */
+/* ------------------------------------------------------- mobile More sheet -- */
 const phone = watch(await browser.newPage());
 await phone.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
 await phone.goto(BASE, { waitUntil: "networkidle2" });
@@ -841,10 +841,17 @@ expect(
   }),
   "the desktop rail is hidden on a phone viewport",
 );
+expect(
+  await phone.evaluate(() => {
+    const bar = document.querySelector("nav.bottom-nav");
+    return Boolean(bar) && getComputedStyle(bar).display !== "none" && bar.querySelectorAll("a").length === 4;
+  }),
+  "a bottom tab bar with four tabs shows on a phone viewport",
+);
 
-await phone.click('button[aria-label="Open navigation"]');
+await phone.click('nav.bottom-nav button[aria-haspopup="dialog"]');
 await wait(400);
-const drawer = await phone.evaluate(() => {
+const sheet = await phone.evaluate(() => {
   const panel = document.querySelector('[role="dialog"][aria-modal="true"]');
   return {
     open: Boolean(panel),
@@ -852,20 +859,20 @@ const drawer = await phone.evaluate(() => {
     focusInside: Boolean(document.activeElement?.closest('[role="dialog"]')),
   };
 });
-expect(drawer.open && drawer.links >= 7, "the menu button opens a drawer with the full nav");
-expect(drawer.focusInside, "focus moves into the drawer when it opens");
+expect(sheet.open && sheet.links >= 5, "the More button opens a sheet with the rest of the nav");
+expect(sheet.focusInside, "focus moves into the sheet when it opens");
 
 await phone.keyboard.press("Escape");
 await wait(400);
 expect(
   await phone.evaluate(() => !document.querySelector('[role="dialog"][aria-modal="true"]')),
-  "Escape closes the drawer",
+  "Escape closes the sheet",
 );
 expect(
   await phone.evaluate(
-    () => document.activeElement?.getAttribute("aria-label") === "Open navigation",
+    () => document.activeElement?.getAttribute("aria-haspopup") === "dialog",
   ),
-  "focus returns to the menu button after closing",
+  "focus returns to the More button after closing",
 );
 
 for (const [path, label] of [

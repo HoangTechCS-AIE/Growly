@@ -2,13 +2,13 @@ import Link from "next/link";
 import {
   AddGoal, AddProject, AddStrategy, AddVision, ArchiveButton, MilestoneList, StatusSelect,
 } from "@/components/strategy-forms";
-import { EmptyState, Meter, PageHeader, StatTile } from "@/components/ui";
+import { EmptyState, Meter, PageHeader, StatTile, Tile } from "@/components/ui";
 import {
   alignmentScore, getSettings, listAreas, listGoals, listMilestones, listProjects,
   listStrategies, listTasks, listVisions, timePerGoal,
 } from "@/lib/queries";
 import type { GoalView } from "@/lib/types";
-import { cn, pct, addDaysISO, dotTone, formatDuration, relativeDay, startOfWeekISO, todayISO } from "@/lib/util";
+import { cn, pct, addDaysISO, dotTone, formatDate, formatDuration, relativeDay, startOfWeekISO, todayISO } from "@/lib/util";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +31,21 @@ export default function StrategyPage() {
   const goalsByVision = (visionId: string | null) =>
     goals.filter((goal) => (visionId ? goal.vision_id === visionId : !goal.vision_id));
 
+  const goalBlock = (goal: GoalView) => (
+    <GoalBlock
+      key={goal.id}
+      goal={goal}
+      strategies={strategies.filter((s) => s.goal_id === goal.id)}
+      projects={projects.filter(
+        (p) => p.goal_id === goal.id || strategies.some((s) => s.id === p.strategy_id && s.goal_id === goal.id),
+      )}
+      milestones={milestones}
+      areas={areas}
+      minutes={invested.find((i) => i.goal_id === goal.id)?.minutes ?? 0}
+      today={today}
+    />
+  );
+
   return (
     <div className="mx-auto max-w-[1400px]">
       <PageHeader
@@ -39,7 +54,7 @@ export default function StrategyPage() {
         actions={<AddVision />}
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatTile label="Visions" value={visions.length} />
         <StatTile label="Active goals" value={goals.filter((g) => g.status === "active").length} />
         <StatTile
@@ -57,15 +72,15 @@ export default function StrategyPage() {
         />
       </div>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4">
         {visions.map((vision) => (
-          <section key={vision.id} className="card p-4">
-            <header className="mb-3 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="section-title">Vision{vision.horizon ? ` · ${vision.horizon}` : ""}</p>
-                <h2 className="text-[16px] font-semibold">{vision.title}</h2>
+          <Tile key={vision.id} className="gap-5">
+            <header className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="tile-title">Vision{vision.horizon ? ` · ${vision.horizon}` : ""}</p>
+                <h2 className="mt-1 text-2xl font-extrabold tracking-tight">{vision.title}</h2>
                 {vision.description && (
-                  <p className="mt-1 max-w-2xl text-[12.5px] text-muted">{vision.description}</p>
+                  <p className="mt-1 max-w-2xl text-sm text-muted">{vision.description}</p>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -74,57 +89,37 @@ export default function StrategyPage() {
               </div>
             </header>
 
-            <div className="flex flex-col gap-3">
-              {goalsByVision(vision.id).map((goal) => (
-                <GoalBlock
-                  key={goal.id}
-                  goal={goal}
-                  strategies={strategies.filter((s) => s.goal_id === goal.id)}
-                  projects={projects.filter((p) => p.goal_id === goal.id || strategies.some((s) => s.id === p.strategy_id && s.goal_id === goal.id))}
-                  milestones={milestones}
-                  areas={areas}
-                  minutes={invested.find((i) => i.goal_id === goal.id)?.minutes ?? 0}
-                  today={today}
-                />
-              ))}
+            <div className="flex flex-col divide-y divide-line">
+              {goalsByVision(vision.id).map(goalBlock)}
               {goalsByVision(vision.id).length === 0 && (
-                <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-muted">
+                <p className="rounded-inner border border-dashed border-line px-4 py-5 text-center text-sm text-muted">
                   No goals under this vision yet.
                 </p>
               )}
             </div>
-          </section>
+          </Tile>
         ))}
 
-        <section className="card p-4">
-          <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="section-title">Standalone</p>
-              <h2 className="text-[15px] font-semibold">Goals without a vision</h2>
+        {(goalsByVision(null).length > 0 || visions.length === 0) && (
+          <Tile className="gap-5">
+            <header className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="tile-title">Standalone</p>
+                <h2 className="mt-1 text-2xl font-extrabold tracking-tight">Goals without a vision</h2>
+              </div>
+              <AddGoal visions={visions} areas={areas} />
+            </header>
+            <div className="flex flex-col divide-y divide-line">
+              {goalsByVision(null).map(goalBlock)}
+              {goalsByVision(null).length === 0 && visions.length === 0 && (
+                <EmptyState
+                  title="Start with one long-term direction"
+                  hint="Add a vision (3–5 years), then a goal for the next 6–12 months, then the strategy you will run for the next few weeks."
+                />
+              )}
             </div>
-            <AddGoal visions={visions} areas={areas} />
-          </header>
-          <div className="flex flex-col gap-3">
-            {goalsByVision(null).map((goal) => (
-              <GoalBlock
-                key={goal.id}
-                goal={goal}
-                strategies={strategies.filter((s) => s.goal_id === goal.id)}
-                projects={projects.filter((p) => p.goal_id === goal.id || strategies.some((s) => s.id === p.strategy_id && s.goal_id === goal.id))}
-                milestones={milestones}
-                areas={areas}
-                minutes={invested.find((i) => i.goal_id === goal.id)?.minutes ?? 0}
-                today={today}
-              />
-            ))}
-            {goalsByVision(null).length === 0 && visions.length === 0 && (
-              <EmptyState
-                title="Start with one long-term direction"
-                hint="Add a vision (3–5 years), then a goal for the next 6–12 months, then the strategy you will run for the next few weeks."
-              />
-            )}
-          </div>
-        </section>
+          </Tile>
+        )}
       </div>
     </div>
   );
@@ -148,80 +143,80 @@ function GoalBlock({
   today: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-surface-2/40 p-3">
-      <header className="mb-2 flex flex-wrap items-start justify-between gap-3">
+    <div className="flex flex-col gap-4 py-5 first:pt-0 last:pb-0">
+      <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[14px] font-semibold">{goal.title}</h3>
-            {goal.area_name && <span className="chip chip-plain">{goal.area_name}</span>}
+            <h3 className="text-lg font-bold tracking-tight">{goal.title}</h3>
+            {goal.area_name && <span className="tag">{goal.area_name}</span>}
             {goal.target_date && (
-              <span className="chip chip-plain">target {relativeDay(goal.target_date, today)}</span>
+              <span className="tag">target {relativeDay(goal.target_date, today)}</span>
             )}
           </div>
-          {goal.metric && <p className="mt-0.5 text-[12px] text-muted">Success: {goal.metric}</p>}
+          {goal.metric && <p className="mt-1 text-sm text-muted">Success: {goal.metric}</p>}
         </div>
         <div className="flex items-center gap-2">
           <StatusSelect kind="goal" id={goal.id} value={goal.status} options={["active", "paused", "done", "dropped"]} />
-          <Link href={`/tasks?goal=${goal.id}`} className="btn btn-sm">
+          <Link href={`/tasks?goal=${goal.id}`} className="btn btn-outline btn-sm">
             Tasks
           </Link>
           <ArchiveButton kind="goal" id={goal.id} />
         </div>
       </header>
 
-      <div className="mb-3 flex flex-wrap items-center gap-3 text-[11.5px] text-muted">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-muted">
         <span className="w-48">
           <Meter value={goal.task_done} max={Math.max(goal.task_total, 1)} />
         </span>
-        <span>
-          {goal.task_done}/{goal.task_total} tasks ({pct(goal.task_done, goal.task_total)}%)
+        <span className="tabular-nums">
+          {goal.task_done}/{goal.task_total} tasks · {pct(goal.task_done, goal.task_total)}%
         </span>
-        <span>{goal.project_total} projects</span>
+        <span>{goal.project_total} project{goal.project_total === 1 ? "" : "s"}</span>
         {minutes > 0 && <span>{formatDuration(minutes)} this week</span>}
         {goal.minutes_logged > 0 && <span>{formatDuration(goal.minutes_logged)} total</span>}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <div>
-          <p className="section-title mb-1.5">Short-term strategies (1–12 weeks)</p>
-          <div className="flex flex-col gap-1.5">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <p className="tile-title">Strategies · 1–12 weeks</p>
+          <div className="flex flex-col">
             {strategies.map((strategy) => (
-              <div key={strategy.id} className="rounded-lg border border-line bg-surface p-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-[13px] font-medium">{strategy.title}</p>
-                  <span className="chip chip-plain shrink-0">
-                    {strategy.start_date ?? "—"} → {strategy.end_date ?? "—"}
-                  </span>
+              <div key={strategy.id} className="list-row items-start">
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold">{strategy.title}</p>
+                  {strategy.description && (
+                    <p className="mt-0.5 text-sm text-muted">{strategy.description}</p>
+                  )}
                 </div>
-                {strategy.description && (
-                  <p className="mt-1 text-[12px] text-muted">{strategy.description}</p>
-                )}
+                <span className="tag shrink-0">
+                  {formatDate(strategy.start_date) || "—"} → {formatDate(strategy.end_date) || "—"}
+                </span>
               </div>
             ))}
             {!strategies.length && (
-              <p className="text-[12px] text-muted">
-                No strategy yet — what is the bet for the next few weeks?
-              </p>
+              <p className="text-sm text-muted">No strategy yet — what is the bet for the next few weeks?</p>
             )}
+          </div>
+          <div className="self-start">
             <AddStrategy goalId={goal.id} />
           </div>
         </div>
 
-        <div>
-          <p className="section-title mb-1.5">Projects</p>
-          <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
+          <p className="tile-title">Projects</p>
+          <div className="flex flex-col">
             {projects.map((project) => (
-              <div key={project.id} className="rounded-lg border border-line bg-surface p-2.5">
-                <div className="flex items-start justify-between gap-2">
+              <div key={project.id} className="list-row flex-col items-stretch gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <Link
-                    href={`/tasks?project=${project.id}`}
-                    className="flex min-w-0 items-center gap-2 text-[13px] font-medium hover:text-accent"
+                    href={`/projects/${project.id}`}
+                    className="flex min-w-0 items-center gap-2 text-base font-semibold hover:text-accent"
                   >
-                    <span className={cn("h-2 w-2 shrink-0 rounded-full", dotTone(project.color))} />
+                    <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", dotTone(project.color))} />
                     <span className="truncate">{project.title}</span>
                   </Link>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <span className="text-[11px] text-muted">
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs font-semibold tabular-nums text-muted">
                       {project.task_done}/{project.task_total}
                     </span>
                     <StatusSelect
@@ -232,18 +227,16 @@ function GoalBlock({
                     />
                   </div>
                 </div>
-                <Meter
-                  value={project.task_done}
-                  max={Math.max(project.task_total, 1)}
-                  className="mt-2"
-                />
+                <Meter value={project.task_done} max={Math.max(project.task_total, 1)} />
                 <MilestoneList
                   projectId={project.id}
                   milestones={milestones.filter((m) => m.project_id === project.id)}
                 />
               </div>
             ))}
-            {!projects.length && <p className="text-[12px] text-muted">No projects under this goal.</p>}
+            {!projects.length && <p className="text-sm text-muted">No projects under this goal.</p>}
+          </div>
+          <div className="self-start">
             <AddProject goalId={goal.id} strategies={strategies} areas={areas} />
           </div>
         </div>

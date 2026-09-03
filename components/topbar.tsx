@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { quickAdd } from "@/lib/quickadd";
 import type { Area, ProjectView } from "@/lib/types";
 import { IconPlus, IconSearch } from "./icons";
+import { Wordmark } from "./nav";
 import { ThemeToggle } from "./theme-toggle";
 import { formatDateLong, todayISO } from "@/lib/util";
 
@@ -22,14 +22,17 @@ const SYNTAX = [
   ["every week", "repeat"],
 ];
 
+/** Opens the command palette from anywhere. */
+export function openPalette() {
+  window.dispatchEvent(new CustomEvent("growly:palette"));
+}
+
 export function Topbar({
   areas,
   projects,
-  nav,
 }: {
   areas: Area[];
   projects: ProjectView[];
-  nav?: React.ReactNode;
 }) {
   const router = useRouter();
   const [text, setText] = useState("");
@@ -37,7 +40,6 @@ export function Topbar({
   const [flash, setFlash] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -45,11 +47,11 @@ export function Topbar({
       // Contenteditable counts as typing too, or `/` would steal the note
       // editor's block menu.
       const typing =
-        target && (/^(INPUT|TEXTAREA)$/.test(target.tagName) || target.isContentEditable);
+        target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable);
       // Cmd/Ctrl+K belongs to the command palette, which can quick-add too.
       if (event.key === "/" && !typing) {
         event.preventDefault();
-        (searchRef.current ?? inputRef.current)?.focus();
+        openPalette();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -70,31 +72,25 @@ export function Topbar({
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 px-3 py-2.5 backdrop-blur sm:px-5 lg:px-6 lg:py-3">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
+    <header className="sticky top-0 z-30 bg-canvas/85 px-4 pt-3 pb-2 backdrop-blur sm:px-6 lg:px-8 lg:pt-6 lg:pb-3">
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
         <div className="flex items-center gap-2 lg:hidden">
-          {nav}
-          <Link href="/" className="flex items-center gap-1.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[12px] font-bold text-accent-ink">
-              G
-            </span>
-            <span className="text-[14px] font-semibold tracking-tight">Growly</span>
-          </Link>
-          <div className="ml-auto flex items-center gap-1">
-            <Link href="/search" className="btn btn-sm btn-ghost" aria-label="Search">
-              <IconSearch className="h-4 w-4" />
-            </Link>
+          <Wordmark />
+          <div className="ml-auto flex items-center gap-1.5">
+            <button type="button" onClick={openPalette} className="btn btn-outline btn-icon" aria-label="Search">
+              <IconSearch className="h-[18px] w-[18px]" />
+            </button>
             <ThemeToggle />
           </div>
         </div>
 
-        <form onSubmit={submit} className="relative min-w-0 flex-1">
+        <form onSubmit={submit} className="relative min-w-0 flex-1 lg:max-w-[720px]">
           <label htmlFor="quick-add" className="sr-only">
             Quick add a task
           </label>
           <div className="relative">
-            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
-              <IconPlus />
+            <span className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-muted">
+              <IconPlus className="h-[18px] w-[18px]" />
             </span>
             <input
               id="quick-add"
@@ -103,14 +99,14 @@ export function Topbar({
               onChange={(e) => setText(e.target.value)}
               onFocus={() => setHint(true)}
               onBlur={() => setTimeout(() => setHint(false), 150)}
-              placeholder="Quick add — Draft landing copy @Landing * today 14:00 45m"
-              className="input pr-20 pl-9 lg:pr-24"
+              placeholder="Quick add — Draft hero copy @Landing * today 14:00 45m"
+              className="input h-11 rounded-full border-line bg-surface pr-24 pl-11 shadow-[0_1px_2px_rgb(23_27_31/0.04)]"
               disabled={pending}
               aria-describedby="quick-add-hint"
               autoComplete="off"
             />
-            <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-2">
-              <span className="hidden text-[11px] text-accent lg:inline" aria-hidden="true">
+            <div className="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center gap-2">
+              <span className="hidden text-xs font-semibold text-accent lg:inline" aria-hidden="true">
                 {flash}
               </span>
               <button type="submit" className="btn btn-sm btn-primary" disabled={pending}>
@@ -125,13 +121,13 @@ export function Topbar({
           {hint && (
             <div
               id="quick-add-hint"
-              className="absolute top-full left-0 z-40 mt-2 w-[min(440px,calc(100vw-1.5rem))] rounded-xl border border-line bg-surface p-3 shadow-[var(--shadow)]"
+              className="absolute top-full left-0 z-40 mt-2 w-[min(460px,calc(100vw-2rem))] rounded-tile border border-line bg-surface p-4 shadow-[var(--shadow)]"
             >
-              <p className="section-title mb-2">Quick-add syntax</p>
+              <p className="tile-title mb-2">Quick-add syntax</p>
               <ul className="grid grid-cols-1 gap-1">
                 {SYNTAX.map(([token, meaning]) => (
-                  <li key={token} className="flex items-baseline gap-2 text-[12px]">
-                    <code className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[11px] text-accent">
+                  <li key={token} className="flex items-baseline gap-2 text-xs">
+                    <code className="rounded-md bg-surface-3 px-1.5 py-0.5 font-mono text-[11px] text-accent">
                       {token}
                     </code>
                     <span className="text-muted">{meaning}</span>
@@ -139,7 +135,7 @@ export function Topbar({
                 ))}
               </ul>
               {projects.length > 0 && (
-                <p className="mt-2 border-t border-line pt-2 text-[11px] text-muted">
+                <p className="mt-2 border-t border-line pt-2 text-xs text-muted">
                   {projects.slice(0, 3).map((p) => `@${p.title}`).join("  ")}
                   {areas.length > 0 && `   /${areas[0].name}`}
                 </p>
@@ -148,25 +144,20 @@ export function Topbar({
           )}
         </form>
 
-        <form action="/search" className="relative hidden w-64 lg:block" role="search">
-          <label htmlFor="global-search" className="sr-only">
-            Search everything
-          </label>
-          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
-            <IconSearch />
-          </span>
-          <input
-            id="global-search"
-            ref={searchRef}
-            name="q"
-            placeholder="Search everything  (/)"
-            className="input pl-9"
-            autoComplete="off"
-          />
-        </form>
-
-        <div className="hidden shrink-0 items-center gap-1 lg:flex">
-          <span className="text-[12px] text-muted">{formatDateLong(todayISO())}</span>
+        <div className="hidden shrink-0 items-center gap-2 lg:ml-auto lg:flex">
+          <span className="mr-1 text-sm font-semibold text-muted">{formatDateLong(todayISO())}</span>
+          <button
+            type="button"
+            onClick={openPalette}
+            className="btn btn-outline gap-2 pr-2 pl-3.5"
+            aria-label="Search everything"
+          >
+            <IconSearch className="h-4 w-4 text-muted" />
+            <span className="text-muted">Search</span>
+            <kbd className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-muted">
+              ⌘K
+            </kbd>
+          </button>
           <ThemeToggle />
         </div>
       </div>

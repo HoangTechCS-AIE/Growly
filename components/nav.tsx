@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  IconCalendar, IconNote, IconReview, IconSettings, IconTarget, IconTask, IconToday,
+  IconCalendar, IconLayers, IconMore, IconNote, IconReview, IconSearch, IconSettings,
+  IconTarget, IconTask, IconToday, IconWarning, IconX,
 } from "./icons";
 import { cn } from "@/lib/util";
 
@@ -15,7 +16,7 @@ export interface NavCounts {
 }
 
 type NavItem = {
-  href: "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/review";
+  href: "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/strategy" | "/review" | "/search" | "/settings";
   label: string;
   Icon: (props: { className?: string }) => React.ReactElement;
   badge?: "today" | "inbox";
@@ -26,40 +27,68 @@ const NAV: NavItem[] = [
   { href: "/tasks", label: "Tasks", Icon: IconTask, badge: "inbox" },
   { href: "/calendar", label: "Calendar", Icon: IconCalendar },
   { href: "/notes", label: "Notes", Icon: IconNote },
-  { href: "/projects", label: "My projects", Icon: IconTarget },
+  { href: "/projects", label: "Projects", Icon: IconTarget },
+  { href: "/strategy", label: "Strategy", Icon: IconLayers },
   { href: "/review", label: "Review", Icon: IconReview },
+];
+
+/* The phone gets four tabs plus "More" for the rest. */
+const TABS = NAV.slice(0, 4);
+const MORE: NavItem[] = [
+  ...NAV.slice(4),
+  { href: "/search", label: "Search", Icon: IconSearch },
+  { href: "/settings", label: "Settings", Icon: IconSettings },
 ];
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname.startsWith(href);
 }
 
-function NavList({ counts, onNavigate }: { counts: NavCounts; onNavigate?: () => void }) {
-  const pathname = usePathname();
+function badgeFor(item: NavItem, counts: NavCounts) {
+  return item.badge === "today" ? counts.today : item.badge === "inbox" ? counts.inbox : 0;
+}
 
+export function Wordmark({ onClick, compact = false }: { onClick?: () => void; compact?: boolean }) {
   return (
-    <>
-      <nav aria-label="Main" className="flex flex-col gap-0.5">
-        {NAV.map(({ href, label, Icon, badge }) => {
-          const active = isActive(pathname, href);
-          const count = badge === "today" ? counts.today : badge === "inbox" ? counts.inbox : 0;
+    <Link href="/" onClick={onClick} className="flex items-center gap-2.5" aria-label="Growly home">
+      <span
+        className={cn(
+          "flex items-center justify-center rounded-inner bg-accent font-extrabold text-accent-ink",
+          compact ? "h-8 w-8 text-sm" : "h-10 w-10 text-lg",
+        )}
+      >
+        G
+      </span>
+      {!compact && <span className="text-lg font-extrabold tracking-tight">Growly</span>}
+    </Link>
+  );
+}
+
+/** Permanent icon rail from `lg` up. */
+export function Rail({ counts }: { counts: NavCounts }) {
+  const pathname = usePathname();
+  return (
+    <aside className="sticky top-0 hidden h-screen w-24 shrink-0 flex-col items-center gap-1.5 px-2 pt-6 pb-5 lg:flex">
+      <div className="mb-4">
+        <Wordmark compact />
+      </div>
+      <nav aria-label="Main" className="flex flex-col items-center gap-1.5">
+        {NAV.map((item) => {
+          const active = isActive(pathname, item.href);
+          const count = badgeFor(item, counts);
           return (
             <Link
-              key={href}
-              href={href}
-              onClick={onNavigate}
+              key={item.href}
+              href={item.href}
               aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition",
-                active ? "bg-surface-3 text-ink" : "text-muted hover:bg-surface-2 hover:text-ink",
-              )}
+              className={cn("rail-item", active && "rail-on")}
             >
-              <Icon className={active ? "text-accent" : ""} />
-              <span className="flex-1">{label}</span>
+              <item.Icon />
+              {item.label}
               {count > 0 && (
-                <span className="rounded-md bg-surface-3 px-1.5 py-0.5 text-[11px] text-muted">
+                <span className="rail-badge">
                   {count}
-                  <span className="sr-only"> {badge === "inbox" ? "in inbox" : "scheduled today"}</span>
+                  <span className="sr-only"> {item.badge === "inbox" ? "in inbox" : "scheduled today"}</span>
                 </span>
               )}
             </Link>
@@ -70,67 +99,33 @@ function NavList({ counts, onNavigate }: { counts: NavCounts; onNavigate?: () =>
       {counts.overdue > 0 && (
         <Link
           href="/tasks?bucket=overdue"
-          onClick={onNavigate}
-          className="mt-4 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12px] text-danger transition hover:bg-danger/15"
+          className="mt-3 flex h-10 w-16 flex-col items-center justify-center rounded-inner bg-danger/10 text-[11px] font-bold text-danger transition hover:bg-danger/15"
+          title={`${counts.overdue} overdue`}
         >
-          {counts.overdue} overdue {counts.overdue === 1 ? "task" : "tasks"}
+          <IconWarning className="h-4 w-4" />
+          {counts.overdue} late
         </Link>
       )}
 
-      <div className="mt-auto flex flex-col gap-0.5 pt-4">
-        <Link
-          href="/settings"
-          onClick={onNavigate}
-          aria-current={pathname.startsWith("/settings") ? "page" : undefined}
-          className={cn(
-            "flex min-h-10 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition",
-            pathname.startsWith("/settings")
-              ? "bg-surface-3 text-ink"
-              : "text-muted hover:bg-surface-2 hover:text-ink",
-          )}
-        >
-          <IconSettings />
-          Settings
-        </Link>
-        <p className="px-2.5 pt-2 text-[11px] leading-relaxed text-muted/80">
-          Strategy → today.
-          <br />
-          Local-first, stored on this machine.
-        </p>
-      </div>
-    </>
-  );
-}
-
-export function Wordmark({ onClick }: { onClick?: () => void }) {
-  return (
-    <Link href="/" onClick={onClick} className="flex items-center gap-2 px-2 py-1">
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-[15px] font-bold text-accent-ink">
-        G
-      </span>
-      <span className="text-[15px] font-semibold tracking-tight">Growly</span>
-    </Link>
-  );
-}
-
-/** Permanent rail from `lg` up. */
-export function Sidebar({ counts }: { counts: NavCounts }) {
-  return (
-    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-line bg-surface/60 px-3 py-4 lg:flex">
-      <div className="mb-5">
-        <Wordmark />
-      </div>
-      <NavList counts={counts} />
+      <Link
+        href="/settings"
+        aria-current={pathname.startsWith("/settings") ? "page" : undefined}
+        className={cn("rail-item mt-auto", pathname.startsWith("/settings") && "rail-on")}
+      >
+        <IconSettings />
+        Settings
+      </Link>
     </aside>
   );
 }
 
-/** Trigger + slide-over used below `lg`. */
-export function MobileNav({ counts }: { counts: NavCounts }) {
+/** Bottom tab bar below `lg`, with a "More" sheet for the rest of the app. */
+export function BottomNav({ counts }: { counts: NavCounts }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const moreActive = MORE.some((item) => isActive(pathname, item.href));
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -142,7 +137,7 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
     document.addEventListener("keydown", onKey);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    panelRef.current?.querySelector<HTMLElement>("a, button")?.focus();
+    sheetRef.current?.querySelector<HTMLElement>("a, button")?.focus();
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previousOverflow;
@@ -152,47 +147,101 @@ export function MobileNav({ counts }: { counts: NavCounts }) {
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={() => setOpen(true)}
-        className="btn btn-sm lg:hidden"
-        aria-label="Open navigation"
-        aria-expanded={open}
-        aria-haspopup="dialog"
-      >
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-          <path d="M4 7h16M4 12h16M4 17h16" />
-        </svg>
-      </button>
+      <nav aria-label="Main" className="bottom-nav">
+        <div className="flex items-stretch">
+          {TABS.map((item) => {
+            const active = isActive(pathname, item.href);
+            const count = badgeFor(item, counts);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn("tab-item", active && "tab-on")}
+              >
+                <item.Icon />
+                {item.label}
+                {count > 0 && (
+                  <span className="tab-badge">
+                    {count}
+                    <span className="sr-only"> {item.badge === "inbox" ? "in inbox" : "scheduled today"}</span>
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+          <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setOpen(true)}
+            className={cn("tab-item", moreActive && "tab-on")}
+            aria-haspopup="dialog"
+            aria-expanded={open}
+          >
+            <IconMore />
+            More
+            {counts.overdue > 0 && (
+              <span className="tab-badge bg-danger text-white">
+                {counts.overdue}
+                <span className="sr-only"> overdue</span>
+              </span>
+            )}
+          </button>
+        </div>
+      </nav>
 
       {open && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button
             type="button"
-            aria-label="Close navigation"
+            aria-label="Close menu"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 h-full w-full cursor-default bg-canvas/70 backdrop-blur-[2px]"
+            className="absolute inset-0 h-full w-full cursor-default bg-ink/30 backdrop-blur-[2px]"
           />
           <div
-            ref={panelRef}
+            ref={sheetRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Navigation"
-            className="absolute inset-y-0 left-0 flex w-64 max-w-[85vw] flex-col border-r border-line bg-surface px-3 py-4 shadow-2xl"
+            aria-label="More"
+            className="absolute inset-x-0 bottom-0 rounded-t-[24px] border-t border-line bg-surface px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[var(--shadow)]"
           >
-            <div className="mb-5 flex items-center justify-between">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line-strong" aria-hidden />
+            <div className="mb-2 flex items-center justify-between">
               <Wordmark onClick={() => setOpen(false)} />
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="btn btn-sm btn-ghost"
-                aria-label="Close navigation"
-              >
-                ✕
+              <button type="button" onClick={() => setOpen(false)} className="btn btn-ghost btn-icon" aria-label="Close menu">
+                <IconX />
               </button>
             </div>
-            <NavList counts={counts} onNavigate={() => setOpen(false)} />
+            <div className="grid grid-cols-2 gap-2">
+              {MORE.map((item) => {
+                const active = isActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex h-14 items-center gap-3 rounded-inner px-4 text-sm font-semibold transition",
+                      active ? "bg-surface-3 text-ink" : "bg-surface-2 text-muted hover:text-ink",
+                    )}
+                  >
+                    <item.Icon className={cn("h-5 w-5", active && "text-accent")} />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+            {counts.overdue > 0 && (
+              <Link
+                href="/tasks?bucket=overdue"
+                onClick={() => setOpen(false)}
+                className="mt-2 flex h-12 items-center justify-center gap-2 rounded-inner bg-danger/10 text-sm font-semibold text-danger"
+              >
+                <IconWarning className="h-4 w-4" />
+                {counts.overdue} overdue {counts.overdue === 1 ? "task" : "tasks"}
+              </Link>
+            )}
           </div>
         </div>
       )}

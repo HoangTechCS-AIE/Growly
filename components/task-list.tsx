@@ -1,4 +1,5 @@
 import type { TaskView } from "@/lib/types";
+import { cn } from "@/lib/util";
 import { TaskRow } from "./task-row";
 
 export function TaskList({
@@ -8,6 +9,8 @@ export function TaskList({
   showFocus = false,
   showSchedule = true,
   draggable = false,
+  compact = false,
+  className,
 }: {
   tasks: TaskView[];
   today: string;
@@ -15,12 +18,14 @@ export function TaskList({
   showFocus?: boolean;
   showSchedule?: boolean;
   draggable?: boolean;
+  compact?: boolean;
+  className?: string;
 }) {
   if (!tasks.length) {
-    return <p className="px-2 py-6 text-center text-[12.5px] text-muted">{empty}</p>;
+    return <p className="py-4 text-center text-sm text-muted">{empty}</p>;
   }
   return (
-    <div className="flex flex-col divide-y divide-line/60">
+    <div className={cn("flex flex-col", compact && "gap-2", className)}>
       {tasks.map((task) => (
         <TaskRow
           key={task.id}
@@ -29,6 +34,7 @@ export function TaskList({
           showFocus={showFocus}
           showSchedule={showSchedule}
           draggable={draggable}
+          compact={compact}
         />
       ))}
     </div>

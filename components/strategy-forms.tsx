@@ -8,7 +8,7 @@ import {
 } from "@/lib/actions";
 import type { Area, Milestone, Strategy, Vision } from "@/lib/types";
 import { COLORS, cn } from "@/lib/util";
-import { IconPlus } from "./icons";
+import { IconDiamond, IconPlus } from "./icons";
 
 function useAction() {
   const router = useRouter();
@@ -28,23 +28,52 @@ function Disclosure({
   label,
   children,
   className,
+  primary = false,
 }: {
   label: string;
   children: (close: () => void) => React.ReactNode;
   className?: string;
+  primary?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={cn("btn btn-sm btn-ghost", className)}>
-        <IconPlus className="h-3.5 w-3.5" />
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn("btn btn-sm", primary ? "btn-primary" : "btn-ghost", className)}
+      >
+        <IconPlus className="h-4 w-4" />
         {label}
       </button>
     );
   }
   return (
-    <div className={cn("rounded-lg border border-line bg-surface-2 p-3", className)}>
+    <div className={cn("rounded-inner border border-line bg-surface-2 p-4", className)}>
       {children(() => setOpen(false))}
+    </div>
+  );
+}
+
+function FormActions({
+  label,
+  disabled,
+  onSubmit,
+  onCancel,
+}: {
+  label: string;
+  disabled: boolean;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <button type="button" className="btn btn-primary btn-sm" disabled={disabled} onClick={onSubmit}>
+        {label}
+      </button>
+      <button type="button" className="btn btn-outline btn-sm" onClick={onCancel}>
+        Cancel
+      </button>
     </div>
   );
 }
@@ -54,9 +83,9 @@ export function AddVision() {
   const [form, setForm] = useState({ title: "", horizon: "", description: "" });
 
   return (
-    <Disclosure label="Add vision">
+    <Disclosure label="Add vision" primary className="w-full sm:w-auto">
       {(close) => (
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-[520px]">
           <input
             className="input"
             placeholder="Long-term vision — the direction, not the task"
@@ -78,19 +107,12 @@ export function AddVision() {
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={pending || !form.title.trim()}
-              onClick={() => run(() => createVision(form), close)}
-            >
-              Create vision
-            </button>
-            <button type="button" className="btn btn-sm" onClick={close}>
-              Cancel
-            </button>
-          </div>
+          <FormActions
+            label="Create vision"
+            disabled={pending || !form.title.trim()}
+            onSubmit={() => run(() => createVision(form), close)}
+            onCancel={close}
+          />
         </div>
       )}
     </Disclosure>
@@ -166,19 +188,12 @@ export function AddGoal({
               onChange={(e) => setForm({ ...form, target_date: e.target.value })}
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={pending || !form.title.trim()}
-              onClick={() => run(() => createGoal(form), close)}
-            >
-              Create goal
-            </button>
-            <button type="button" className="btn btn-sm" onClick={close}>
-              Cancel
-            </button>
-          </div>
+          <FormActions
+            label="Create goal"
+            disabled={pending || !form.title.trim()}
+            onSubmit={() => run(() => createGoal(form), close)}
+            onCancel={close}
+          />
         </div>
       )}
     </Disclosure>
@@ -220,19 +235,12 @@ export function AddStrategy({ goalId }: { goalId: string }) {
               onChange={(e) => setForm({ ...form, end_date: e.target.value })}
             />
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={pending || !form.title.trim()}
-              onClick={() => run(() => createStrategy({ ...form, goal_id: goalId }), close)}
-            >
-              Create strategy
-            </button>
-            <button type="button" className="btn btn-sm" onClick={close}>
-              Cancel
-            </button>
-          </div>
+          <FormActions
+            label="Create strategy"
+            disabled={pending || !form.title.trim()}
+            onSubmit={() => run(() => createStrategy({ ...form, goal_id: goalId }), close)}
+            onCancel={close}
+          />
         </div>
       )}
     </Disclosure>
@@ -300,7 +308,7 @@ export function AddProject({
               onChange={(e) => setForm({ ...form, due_date: e.target.value })}
             />
             <select
-              className="input w-auto"
+              className="input w-auto capitalize"
               value={form.color}
               onChange={(e) => setForm({ ...form, color: e.target.value })}
             >
@@ -311,19 +319,12 @@ export function AddProject({
               ))}
             </select>
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              disabled={pending || !form.title.trim()}
-              onClick={() => run(() => createProject({ ...form, goal_id: goalId }), close)}
-            >
-              Create project
-            </button>
-            <button type="button" className="btn btn-sm" onClick={close}>
-              Cancel
-            </button>
-          </div>
+          <FormActions
+            label="Create project"
+            disabled={pending || !form.title.trim()}
+            onSubmit={() => run(() => createProject({ ...form, goal_id: goalId }), close)}
+            onCancel={close}
+          />
         </div>
       )}
     </Disclosure>
@@ -341,32 +342,37 @@ export function MilestoneList({
   const [form, setForm] = useState({ title: "", date: "" });
 
   return (
-    <div className="mt-2">
+    <div className="flex flex-col gap-2">
       {milestones.length > 0 && (
-        <ul className="mb-1.5 flex flex-col gap-1">
+        <ul className="flex flex-col gap-1">
           {milestones.map((milestone) => (
-            <li key={milestone.id} className="flex items-center gap-2 text-[12px]">
+            <li key={milestone.id} className="flex items-center gap-2 text-sm">
               <button
                 type="button"
                 onClick={() => run(() => toggleMilestone(milestone.id))}
                 className={cn(
-                  "h-2.5 w-2.5 shrink-0 rotate-45 border transition cursor-pointer",
-                  milestone.done === 1 ? "border-accent bg-accent" : "border-warn bg-warn/20",
+                  "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition hover:bg-surface-3",
+                  milestone.done === 1 ? "text-accent" : "text-warn",
                 )}
                 title={milestone.done === 1 ? "Mark as not reached" : "Mark as reached"}
-              />
-              <span className={cn("flex-1 truncate", milestone.done === 1 && "text-muted line-through")}>
+                aria-label={milestone.done === 1 ? "Mark milestone as not reached" : "Mark milestone as reached"}
+                aria-pressed={milestone.done === 1}
+              >
+                <IconDiamond className="h-3.5 w-3.5" fill={milestone.done === 1 ? "currentColor" : "none"} />
+              </button>
+              <span className={cn("min-w-0 flex-1 truncate font-medium", milestone.done === 1 && "text-muted line-through")}>
                 {milestone.title}
               </span>
-              <span className="text-muted tabular-nums">{milestone.date ?? ""}</span>
+              <span className="text-xs tabular-nums text-muted">{milestone.date ?? ""}</span>
             </li>
           ))}
         </ul>
       )}
       <div className="flex gap-1.5">
         <input
-          className="input py-1 text-[12px]"
+          className="input input-sm rounded-full"
           placeholder="+ Milestone"
+          aria-label="New milestone"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           onKeyDown={(e) => {
@@ -379,7 +385,8 @@ export function MilestoneList({
         />
         <input
           type="date"
-          className="input w-32 py-1 text-[12px]"
+          className="input input-sm w-36"
+          aria-label="Milestone date"
           value={form.date}
           onChange={(e) => setForm({ ...form, date: e.target.value })}
         />
@@ -402,7 +409,7 @@ export function StatusSelect({
   const { run } = useAction();
   return (
     <select
-      className="input w-auto py-1 text-[11.5px]"
+      className="input input-sm w-auto rounded-full font-semibold capitalize"
       aria-label={`${kind} status`}
       value={value}
       onChange={(e) => {

@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Board } from "@/components/board";
+import { IconPlus } from "@/components/icons";
 import { Matrix } from "@/components/matrix";
 import { TaskFilters } from "@/components/task-filters";
 import { TaskList } from "@/components/task-list";
 import { Timeline } from "@/components/timeline";
-import { Card, PageHeader } from "@/components/ui";
+import { EmptyState, PageHeader, Tile } from "@/components/ui";
 import {
   getSettings, listAreas, listMilestones, listProjects, listTags, listTasks,
   type TaskFilter,
@@ -85,6 +86,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
         subtitle={`${openCount} open${looseTasks ? ` · ${looseTasks} not in a project` : " · all in a project"}`}
         actions={
           <Link href="/tasks/new" className="btn btn-primary">
+            <IconPlus className="h-4 w-4" />
             New task
           </Link>
         }
@@ -106,21 +108,36 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
       )}
 
       {view === "list" && (
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {groupByDate(tasks, today).map((group) => (
-            <Card key={group.key} title={group.label} hint={`${group.tasks.length} task(s)`}>
+            <Tile
+              key={group.key}
+              title={group.label}
+              action={<span className="tag tabular-nums">{group.tasks.length}</span>}
+              className={cn(group.key === "today" || group.key === "overdue" ? "xl:col-span-2" : "")}
+            >
               <TaskList tasks={group.tasks} today={today} showFocus />
-            </Card>
+            </Tile>
           ))}
           {!tasks.length && (
-            <Card>
-              <p className="px-2 py-10 text-center text-[13px] text-muted">
-                No tasks match these filters. Capture one with the quick-add bar above.
-              </p>
-            </Card>
+            <Tile className="xl:col-span-2">
+              <EmptyState
+                title="No tasks match these filters"
+                hint="Capture one with the quick-add bar above, or clear the filters."
+                action={
+                  <Link href="/tasks" className="btn btn-sm">
+                    Clear filters
+                  </Link>
+                }
+              />
+            </Tile>
           )}
         </div>
       )}
     </div>
   );
+}
+
+function cn(...parts: (string | false | null | undefined)[]) {
+  return parts.filter(Boolean).join(" ");
 }

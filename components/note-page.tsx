@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@/lib/actions";
 import { createDatabase } from "@/lib/database";
 import { BlockEditor } from "./block-editor";
-import { IconArchive, IconPin, IconTrash } from "./icons";
+import { IconArchive, IconImage, IconNote, IconPin, IconSliders, IconSmile, IconTrash } from "./icons";
 import {
   NOTE_COVERS, NOTE_KIND_LABEL, coverCss,
   type NoteKind, type NoteTreeItem, type NoteView, type ProjectView,
@@ -52,6 +52,14 @@ export function NotePage({
   });
   const formRef = useRef(form);
   formRef.current = form;
+  // The title is a textarea so long names wrap on a phone; it grows to fit.
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [form.title]);
 
   // A different page arrived through the same component instance.
   const loadedId = useRef(note.id);
@@ -109,10 +117,10 @@ export function NotePage({
       {cover && (
         <div className="np-cover group" style={{ backgroundImage: cover }}>
           <div className="np-cover-actions row-actions">
-            <button type="button" className="btn btn-sm" onClick={() => setShowCover((open) => !open)}>
+            <button type="button" className="btn btn-sm bg-surface/90 backdrop-blur" onClick={() => setShowCover((open) => !open)}>
               Change cover
             </button>
-            <button type="button" className="btn btn-sm" onClick={() => appearance({ cover: null })}>
+            <button type="button" className="btn btn-sm bg-surface/90 backdrop-blur" onClick={() => appearance({ cover: null })}>
               Remove
             </button>
           </div>
@@ -152,12 +160,12 @@ export function NotePage({
           <span className="np-crumb-current">{form.title || "Untitled"}</span>
 
           <span className="ml-auto flex items-center gap-1.5">
-            <span className="text-[11px] text-muted" aria-live="polite">
+            <span className="text-xs font-semibold text-muted" aria-live="polite">
               {saving ? "Saving…" : dirty ? "Unsaved" : "Saved"}
             </span>
             <button
               type="button"
-              className={cn("btn btn-sm", note.pinned === 1 && "text-warn")}
+              className={cn("btn btn-ghost btn-icon btn-sm", note.pinned === 1 && "text-warn")}
               title={note.pinned === 1 ? "Unpin" : "Pin"}
               onClick={() =>
                 startTransition(async () => {
@@ -166,11 +174,11 @@ export function NotePage({
                 })
               }
             >
-              <IconPin className="h-3.5 w-3.5" />
+              <IconPin className="h-4 w-4" />
             </button>
             <button
               type="button"
-              className="btn btn-sm"
+              className="btn btn-ghost btn-icon btn-sm"
               title={note.archived === 1 ? "Unarchive" : "Archive"}
               onClick={() =>
                 startTransition(async () => {
@@ -179,11 +187,11 @@ export function NotePage({
                 })
               }
             >
-              <IconArchive className="h-3.5 w-3.5" />
+              <IconArchive className="h-4 w-4" />
             </button>
             <button
               type="button"
-              className="btn btn-sm text-danger"
+              className="btn btn-ghost btn-icon btn-sm btn-danger"
               title="Delete page"
               onClick={() => {
                 const warning = subpages.length
@@ -196,7 +204,7 @@ export function NotePage({
                 });
               }}
             >
-              <IconTrash className="h-3.5 w-3.5" />
+              <IconTrash className="h-4 w-4" />
             </button>
           </span>
         </nav>
@@ -204,7 +212,8 @@ export function NotePage({
         <div className="np-add-row row-actions">
           {!note.icon && (
             <button type="button" className="np-add-btn" onClick={() => setShowEmoji(true)}>
-              😀 Add icon
+              <IconSmile />
+              Add icon
             </button>
           )}
           {!cover && (
@@ -213,11 +222,13 @@ export function NotePage({
               className="np-add-btn"
               onClick={() => appearance({ cover: NOTE_COVERS[0].key })}
             >
-              🖼 Add cover
+              <IconImage />
+              Add cover
             </button>
           )}
           <button type="button" className="np-add-btn" onClick={() => setShowProps((open) => !open)}>
-            ⚙ {showProps ? "Hide" : "Show"} properties
+            <IconSliders />
+            {showProps ? "Hide" : "Show"} properties
           </button>
         </div>
 
@@ -232,9 +243,14 @@ export function NotePage({
               {note.icon}
             </button>
           )}
-          <input
+          <textarea
+            ref={titleRef}
             value={form.title}
-            onChange={(event) => set("title", event.target.value)}
+            rows={1}
+            onChange={(event) => set("title", event.target.value.replace(/\n/g, " "))}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.preventDefault();
+            }}
             className="np-title"
             placeholder="Untitled"
             aria-label="Page title"
@@ -330,13 +346,13 @@ export function NotePage({
 
         <div className="np-footer">
           <section>
-            <h2 className="section-title">Sub-pages</h2>
+            <h2 className="tile-title">Sub-pages</h2>
             {subpages.length ? (
               <ul className="np-links">
                 {subpages.map((child) => (
                   <li key={child.id}>
                     <Link href={`/notes/${child.id}`}>
-                      <span>{child.icon || "📄"}</span>
+                      <span aria-hidden>{child.icon || <IconNote />}</span>
                       {child.title || "Untitled"}
                     </Link>
                   </li>
@@ -363,13 +379,13 @@ export function NotePage({
           </section>
 
           <section>
-            <h2 className="section-title">Backlinks</h2>
+            <h2 className="tile-title">Backlinks</h2>
             {backlinks.length ? (
               <ul className="np-links">
                 {backlinks.map((item) => (
                   <li key={item.id}>
                     <Link href={`/notes/${item.id}`}>
-                      <span>{item.icon || "📄"}</span>
+                      <span aria-hidden>{item.icon || <IconNote />}</span>
                       {item.title}
                     </Link>
                   </li>
@@ -384,12 +400,12 @@ export function NotePage({
 
           {outlinks.length > 0 && (
             <section>
-              <h2 className="section-title">Links out</h2>
+              <h2 className="tile-title">Links out</h2>
               <ul className="np-links">
                 {outlinks.map((item) => (
                   <li key={item.id}>
                     <Link href={`/notes/${item.id}`}>
-                      <span>{item.icon || "📄"}</span>
+                      <span aria-hidden>{item.icon || <IconNote />}</span>
                       {item.title}
                     </Link>
                   </li>

@@ -13,6 +13,7 @@ import {
 import { GoalEmbed, TasksEmbed, type EmbedContext } from "./embed-block";
 import { DatabaseBlock } from "./database-block";
 import { Popover } from "./popover";
+import { IconChevronRight, IconGrip, IconPlus, IconCheck } from "./icons";
 import { cn } from "@/lib/util";
 
 /* ------------------------------------------------------------ caret helpers */
@@ -1257,7 +1258,7 @@ export function BlockEditor({
                 aria-label="Add a block below"
                 onClick={() => insertBelow(block.id)}
               >
-                +
+                <IconPlus className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
@@ -1277,7 +1278,7 @@ export function BlockEditor({
                 }}
                 onClick={(event) => selectHandle(event, block.id)}
               >
-                ⠿
+                <IconGrip className="h-3.5 w-3.5" />
               </button>
             </div>
 
@@ -1312,7 +1313,7 @@ export function BlockEditor({
                     className={cn("nb-marker nb-check", block.checked && "nb-check-on")}
                     onClick={() => patch(block.id, { checked: !block.checked })}
                   >
-                    {block.checked ? "✓" : ""}
+                    {block.checked ? <IconCheck className="h-3 w-3" strokeWidth={3} /> : null}
                   </button>
                 )}
                 {block.type === "toggle" && (
@@ -1323,7 +1324,7 @@ export function BlockEditor({
                     className={cn("nb-marker nb-toggle", !collapsed.has(block.id) && "nb-toggle-open")}
                     onClick={() => toggleCollapse(block.id)}
                   >
-                    ▸
+                    <IconChevronRight className="h-3 w-3" />
                   </button>
                 )}
                 {block.type === "callout" && (

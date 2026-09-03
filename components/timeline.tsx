@@ -31,23 +31,21 @@ export function Timeline({
 
   if (!projects.length) {
     return (
-      <p className="card-pad text-center text-[12.5px] text-muted">
+      <p className="tile text-center text-sm text-muted">
         No projects yet. Create one in Strategy to see it on the timeline.
       </p>
     );
   }
 
   return (
-    <div className="card overflow-x-auto">
+    <div className="tile gap-0 overflow-x-auto p-0">
       <div className="min-w-[900px]">
-        <div className="flex border-b border-line bg-surface-2/50 px-4 py-2">
-          <div className="w-64 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted">
-            Project
-          </div>
+        <div className="flex border-b border-line bg-surface-2/60 px-5 py-2.5">
+          <div className="w-64 shrink-0 tile-title">Project</div>
           <div className="relative flex-1">
             <div className="flex">
               {weeks.map((week) => (
-                <div key={week} className="flex-1 text-[10px] text-muted">
+                <div key={week} className="flex-1 text-[11px] font-semibold text-muted">
                   {formatDate(week).slice(4)}
                 </div>
               ))}
@@ -65,13 +63,13 @@ export function Timeline({
           const right = offset(end);
 
           return (
-            <div key={project.id} className="flex items-center border-b border-line/60 px-4 py-3">
+            <div key={project.id} className="flex items-center border-b border-line px-5 py-3 last:border-b-0">
               <div className="w-64 shrink-0 pr-4">
-                <Link href={`/tasks?project=${project.id}`} className="flex items-center gap-2 text-[13px] hover:text-accent">
+                <Link href={`/projects/${project.id}`} className="flex items-center gap-2 text-sm font-semibold hover:text-accent">
                   <span className={cn("h-2 w-2 shrink-0 rounded-full", dotTone(project.color))} />
                   <span className="truncate">{project.title}</span>
                 </Link>
-                <p className="mt-0.5 truncate text-[11px] text-muted">
+                <p className="mt-0.5 truncate text-xs text-muted">
                   {project.task_done}/{project.task_total} tasks
                 </p>
                 <Meter
@@ -81,26 +79,26 @@ export function Timeline({
                 />
               </div>
 
-              <div className="relative h-9 flex-1">
+              <div className="relative h-10 flex-1">
                 <div className="absolute inset-0 flex">
                   {weeks.map((week) => (
-                    <div key={week} className="flex-1 border-l border-line/40" />
+                    <div key={week} className="flex-1 border-l border-line/60" />
                   ))}
                 </div>
                 <div
-                  className="absolute top-0 bottom-0 w-px bg-accent/60"
+                  className="absolute top-0 bottom-0 w-px bg-accent"
                   style={{ left: `${offset(today)}%` }}
                   title={`Today · ${today}`}
                 />
                 <div
-                  className={cn("absolute top-3 h-2.5 rounded-[4px] opacity-70", dotTone(project.color))}
+                  className={cn("absolute top-3.5 h-3 rounded-full opacity-70", dotTone(project.color))}
                   style={{ left: `${left}%`, width: `${Math.max(1.5, right - left)}%` }}
                   title={`${project.title}: ${project.start_date ?? "—"} → ${project.due_date ?? "—"}`}
                 />
                 {dated.map((task) => (
                   <span
                     key={task.id}
-                    className="absolute top-[9px] h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-ink/70"
+                    className="absolute top-[11px] h-2 w-2 -translate-x-1/2 rounded-full bg-ink"
                     style={{ left: `${offset((task.due_date ?? task.scheduled_date)!)}%` }}
                     title={`${task.title} · ${task.due_date ? `due ${task.due_date}` : task.scheduled_date}`}
                   />
@@ -109,10 +107,8 @@ export function Timeline({
                   <span
                     key={milestone.id}
                     className={cn(
-                      "absolute top-[18px] h-2.5 w-2.5 -translate-x-1/2 rotate-45 border",
-                      milestone.done
-                        ? "border-accent bg-accent"
-                        : "border-warn bg-warn/30",
+                      "absolute top-[22px] h-2.5 w-2.5 -translate-x-1/2 rotate-45 rounded-[2px] border-2",
+                      milestone.done ? "border-accent bg-accent" : "border-warn bg-warn/30",
                     )}
                     style={{ left: `${offset(milestone.date!)}%` }}
                     title={`Milestone: ${milestone.title} · ${milestone.date}`}
@@ -123,7 +119,7 @@ export function Timeline({
           );
         })}
 
-        <p className="px-4 py-2 text-[11px] text-muted">
+        <p className="px-5 py-2.5 text-xs text-muted">
           Bars are project spans · dots are dated tasks · diamonds are milestones · the vertical line is today.
         </p>
       </div>

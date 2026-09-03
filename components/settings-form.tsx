@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { createArea, deleteArea, updateSettings } from "@/lib/actions";
 import type { Area, Settings } from "@/lib/types";
 import { cn, COLORS, dotTone, formatClock, formatDuration } from "@/lib/util";
-import { Card } from "./ui";
-import { IconTrash } from "./icons";
+import { Tile } from "./ui";
+import { IconPlus, IconX } from "./icons";
 
 export function SettingsForm({ settings, areas }: { settings: Settings; areas: Area[] }) {
   const router = useRouter();
@@ -25,11 +25,12 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
 
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Day and capacity" hint="Used by the calendar grid and the over-capacity warning">
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+      <Tile title="Day and capacity" hint="Used by the calendar grid and the over-capacity warning">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
           <div>
-            <label className="label">Day starts</label>
+            <label className="label" htmlFor="day-start">Day starts</label>
             <input
+              id="day-start"
               type="time"
               className="input"
               value={form.day_start_min}
@@ -37,8 +38,9 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
             />
           </div>
           <div>
-            <label className="label">Day ends</label>
+            <label className="label" htmlFor="day-end">Day ends</label>
             <input
+              id="day-end"
               type="time"
               className="input"
               value={form.day_end_min}
@@ -46,21 +48,22 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
             />
           </div>
           <div>
-            <label className="label">Realistic focus per day (minutes)</label>
+            <label className="label" htmlFor="capacity">Focus per day (minutes)</label>
             <input
+              id="capacity"
               type="number"
               className="input"
               value={form.daily_capacity_min}
               onChange={(e) => setForm({ ...form, daily_capacity_min: e.target.value })}
             />
-            <p className="mt-1 text-[11px] text-muted">
-              {formatDuration(Number(form.daily_capacity_min) || 0)} — planning beyond this raises a
-              warning.
+            <p className="mt-1.5 text-xs text-muted">
+              {formatDuration(Number(form.daily_capacity_min) || 0)} — planning beyond this raises a warning.
             </p>
           </div>
           <div>
-            <label className="label">Week starts on</label>
+            <label className="label" htmlFor="week-start">Week starts on</label>
             <select
+              id="week-start"
               className="input"
               value={form.week_starts_on}
               onChange={(e) => setForm({ ...form, week_starts_on: e.target.value })}
@@ -70,7 +73,7 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
             </select>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             type="button"
             className="btn btn-primary"
@@ -90,20 +93,21 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
           >
             Save settings
           </button>
-          {saved && <span className="text-[12px] text-accent">Saved</span>}
+          {saved && <span className="tag tag-accent">Saved</span>}
         </div>
-      </Card>
+      </Tile>
 
-      <Card title="Life areas" hint="Work, Health, Learning — the buckets a goal or task belongs to">
-        <ul className="mb-3 flex flex-wrap gap-2">
+      <Tile title="Life areas" hint="Work, Health, Learning — the buckets a goal or task belongs to">
+        <ul className="flex flex-wrap gap-2">
           {areas.map((item) => (
-            <li key={item.id} className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-2.5 py-1.5">
-              <span className={cn("h-2 w-2 rounded-full", dotTone(item.color))} />
-              <span className="text-[13px]">{item.name}</span>
+            <li key={item.id} className="flex h-10 items-center gap-2 rounded-full bg-surface-3 pr-1.5 pl-3.5 text-sm font-semibold">
+              <span className={cn("h-2.5 w-2.5 rounded-full", dotTone(item.color))} />
+              <span>{item.name}</span>
               <button
                 type="button"
-                className="text-muted transition hover:text-danger cursor-pointer"
+                className="btn btn-ghost btn-icon btn-sm hover:text-danger"
                 title="Delete area"
+                aria-label={`Delete area ${item.name}`}
                 onClick={() =>
                   startTransition(async () => {
                     await deleteArea(item.id);
@@ -111,20 +115,23 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
                   })
                 }
               >
-                <IconTrash className="h-3.5 w-3.5" />
+                <IconX className="h-4 w-4" />
               </button>
             </li>
           ))}
+          {!areas.length && <li className="text-sm text-muted">No areas yet.</li>}
         </ul>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             className="input w-48"
             placeholder="New area"
+            aria-label="New area name"
             value={area.name}
             onChange={(e) => setArea({ ...area, name: e.target.value })}
           />
           <select
-            className="input w-auto"
+            className="input w-auto capitalize"
+            aria-label="Area colour"
             value={area.color}
             onChange={(e) => setArea({ ...area, color: e.target.value })}
           >
@@ -136,7 +143,7 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
           </select>
           <button
             type="button"
-            className="btn"
+            className="btn btn-outline"
             disabled={!area.name.trim()}
             onClick={() =>
               startTransition(async () => {
@@ -146,10 +153,11 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
               })
             }
           >
+            <IconPlus className="h-4 w-4" />
             Add area
           </button>
         </div>
-      </Card>
+      </Tile>
     </div>
   );
 }

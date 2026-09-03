@@ -9,8 +9,8 @@ import {
 } from "@/lib/actions";
 import type { Reflection, Task, TaskEvent, TaskView, TimeLog } from "@/lib/types";
 import { cn, formatDuration, parseDuration } from "@/lib/util";
-import { Card, Meter } from "./ui";
-import { IconTrash } from "./icons";
+import { Meter, Tile } from "./ui";
+import { IconCheck, IconTrash, IconX } from "./icons";
 
 export function SubtaskPanel({ parentId, subtasks }: { parentId: string; subtasks: TaskView[] }) {
   const router = useRouter();
@@ -26,40 +26,42 @@ export function SubtaskPanel({ parentId, subtasks }: { parentId: string; subtask
   }
 
   return (
-    <Card title="Checklist" hint={subtasks.length ? `${done}/${subtasks.length} done` : "Break it down"}>
+    <Tile
+      title="Steps"
+      hint={subtasks.length ? `${done} of ${subtasks.length} done` : "Break it down"}
+      action={subtasks.length ? <span className="tag tabular-nums">{done}/{subtasks.length}</span> : null}
+    >
       {subtasks.length > 0 && (
         <>
-          <Meter value={done} max={subtasks.length} className="mb-3" />
-          <ul className="mb-2 flex flex-col">
+          <Meter value={done} max={subtasks.length} />
+          <ul className="flex flex-col">
             {subtasks.map((sub) => (
-              <li key={sub.id} className="group flex items-center gap-2 rounded-lg px-1 py-1 hover:bg-surface-2">
+              <li key={sub.id} className="group list-row">
                 <button
                   type="button"
+                  aria-label={sub.status === "done" ? "Mark step as not done" : "Mark step as done"}
                   onClick={() => act(() => toggleTaskDone(sub.id))}
-                  className={cn(
-                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
-                    sub.status === "done"
-                      ? "border-accent bg-accent text-accent-ink"
-                      : "border-line-strong text-transparent hover:border-accent",
-                  )}
+                  className={cn("check", sub.status === "done" && "check-on")}
                 >
-                  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="3.5">
-                    <path d="M5 12.5l4.5 4.5L19 7" />
-                  </svg>
+                  <IconCheck className="h-3.5 w-3.5" strokeWidth={3} />
                 </button>
                 <Link
                   href={`/tasks/${sub.id}`}
-                  className={cn("flex-1 truncate text-[13px]", sub.status === "done" && "text-muted line-through")}
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-base font-medium hover:text-accent",
+                    sub.status === "done" && "text-muted line-through",
+                  )}
                 >
                   {sub.title}
                 </Link>
                 <button
                   type="button"
                   onClick={() => act(() => deleteTask(sub.id))}
-                  className="row-actions btn btn-ghost btn-sm"
-                  title="Delete subtask"
+                  className="row-actions btn btn-ghost btn-icon btn-sm"
+                  title="Delete step"
+                  aria-label="Delete step"
                 >
-                  <IconTrash className="h-3.5 w-3.5" />
+                  <IconTrash className="h-4 w-4" />
                 </button>
               </li>
             ))}
@@ -76,11 +78,12 @@ export function SubtaskPanel({ parentId, subtasks }: { parentId: string; subtask
             act(() => addSubtask(parentId, value));
           }
         }}
-        placeholder="+ Add a step"
-        className="input"
+        placeholder="+ Add a step and press Enter"
+        aria-label="New step"
+        className="input input-sm rounded-full"
         disabled={pending}
       />
-    </Card>
+    </Tile>
   );
 }
 
@@ -106,32 +109,26 @@ export function DependencyPanel({
   }
 
   return (
-    <Card title="Dependencies" hint="What has to happen first">
+    <Tile title="Dependencies" hint="What has to happen first">
       {blockedBy.length > 0 && (
-        <div className="mb-3">
-          <p className="section-title mb-1">Waits for</p>
-          <ul className="flex flex-col gap-1">
+        <div>
+          <p className="label">Waits for</p>
+          <ul className="flex flex-col">
             {blockedBy.map((dep) => (
-              <li key={dep.id} className="flex items-center gap-2 text-[13px]">
-                <span
-                  className={cn(
-                    "chip",
-                    dep.status === "done"
-                      ? "border-accent/30 bg-accent/10 text-accent"
-                      : "border-danger/30 bg-danger/10 text-danger",
-                  )}
-                >
+              <li key={dep.id} className="list-row">
+                <span className={cn("tag", dep.status === "done" ? "tag-accent" : "tag-danger")}>
                   {dep.status === "done" ? "done" : "open"}
                 </span>
-                <Link href={`/tasks/${dep.id}`} className="flex-1 truncate hover:text-accent">
+                <Link href={`/tasks/${dep.id}`} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-accent">
                   {dep.title}
                 </Link>
                 <button
                   type="button"
                   onClick={() => act(() => removeDependency(taskId, dep.id))}
-                  className="btn btn-ghost btn-sm"
+                  className="btn btn-ghost btn-icon btn-sm"
+                  aria-label="Remove dependency"
                 >
-                  ×
+                  <IconX className="h-4 w-4" />
                 </button>
               </li>
             ))}
@@ -140,12 +137,12 @@ export function DependencyPanel({
       )}
 
       {blocking.length > 0 && (
-        <div className="mb-3">
-          <p className="section-title mb-1">Blocks</p>
-          <ul className="flex flex-col gap-1">
+        <div>
+          <p className="label">Blocks</p>
+          <ul className="flex flex-col">
             {blocking.map((dep) => (
-              <li key={dep.id} className="truncate text-[13px]">
-                <Link href={`/tasks/${dep.id}`} className="hover:text-accent">
+              <li key={dep.id} className="list-row">
+                <Link href={`/tasks/${dep.id}`} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-accent">
                   {dep.title}
                 </Link>
               </li>
@@ -155,8 +152,9 @@ export function DependencyPanel({
       )}
 
       <select
-        className="input"
+        className="input input-sm"
         value=""
+        aria-label="Add a task this one waits for"
         onChange={(e) => {
           if (e.target.value) act(() => addDependency(taskId, e.target.value));
         }}
@@ -171,7 +169,7 @@ export function DependencyPanel({
             </option>
           ))}
       </select>
-    </Card>
+    </Tile>
   );
 }
 
@@ -200,7 +198,7 @@ export function TimePanel({
   }
 
   return (
-    <Card
+    <Tile
       title="Time"
       hint={
         estimate
@@ -209,12 +207,7 @@ export function TimePanel({
       }
     >
       {estimate ? (
-        <Meter
-          value={total}
-          max={estimate}
-          tone={total > estimate ? "warn" : "accent"}
-          className="mb-3"
-        />
+        <Meter value={total} max={estimate} tone={total > estimate ? "warn" : "accent"} />
       ) : null}
       <div className="flex gap-2">
         <input
@@ -222,23 +215,24 @@ export function TimePanel({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder="Log time — 45m, 1h30"
-          className="input"
+          aria-label="Log time"
+          className="input input-sm rounded-full"
         />
-        <button type="button" onClick={add} className="btn">
+        <button type="button" onClick={add} className="btn btn-sm btn-primary">
           Log
         </button>
       </div>
       {logs.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-1 text-[12px] text-muted">
+        <ul className="flex flex-col gap-1 text-xs text-muted">
           {logs.slice(0, 6).map((log) => (
             <li key={log.id} className="flex justify-between">
               <span>{log.date}</span>
-              <span className="tabular-nums">{formatDuration(log.minutes)}</span>
+              <span className="font-semibold tabular-nums text-ink">{formatDuration(log.minutes)}</span>
             </li>
           ))}
         </ul>
       )}
-    </Card>
+    </Tile>
   );
 }
 
@@ -263,14 +257,14 @@ export function ReflectionPanel({
 
   if (!isDone && !reflection) {
     return (
-      <Card title="Closing the loop" hint="Available once the task is done">
-        <p className="px-1 py-3 text-[12.5px] text-muted">
+      <Tile title="Closing the loop" hint="Available once the task is done">
+        <p className="text-sm leading-relaxed text-muted">
           When you finish this task, Growly asks three questions: did the result match the
           expectation, did it move its project forward, and what is the next step.
         </p>
         <button
           type="button"
-          className="btn btn-primary"
+          className="btn btn-accent self-start"
           onClick={() =>
             startTransition(async () => {
               await setTaskStatus(taskId, "done");
@@ -278,14 +272,15 @@ export function ReflectionPanel({
             })
           }
         >
+          <IconCheck className="h-4 w-4" strokeWidth={2.4} />
           Mark as done
         </button>
-      </Card>
+      </Tile>
     );
   }
 
   return (
-    <Card title="Closing the loop" hint="What did finishing this actually produce?">
+    <Tile title="Closing the loop" hint="What did finishing this actually produce?">
       <div className="flex flex-col gap-3">
         <div>
           <label className="label">Did the result match what you expected?</label>
@@ -329,10 +324,10 @@ export function ReflectionPanel({
           >
             Save reflection
           </button>
-          {saved && <span className="text-[12px] text-accent">Saved</span>}
+          {saved && <span className="text-xs font-semibold text-accent">Saved</span>}
         </div>
       </div>
-    </Card>
+    </Tile>
   );
 }
 
@@ -352,20 +347,21 @@ export function TaskAdminBar({ task }: { task: TaskView }) {
     <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
-        className="btn"
+        className="btn btn-outline"
         onClick={() => act(() => archiveTask(task.id, task.archived === 0))}
       >
         {task.archived === 1 ? "Unarchive" : "Archive"}
       </button>
       <button
         type="button"
-        className="btn text-danger"
+        className="btn btn-ghost btn-danger"
         onClick={() => {
           if (confirm("Delete this task permanently? Archiving keeps the history.")) {
             act(() => deleteTask(task.id), true);
           }
         }}
       >
+        <IconTrash className="h-4 w-4" />
         Delete
       </button>
     </div>
@@ -375,18 +371,18 @@ export function TaskAdminBar({ task }: { task: TaskView }) {
 export function HistoryPanel({ events }: { events: TaskEvent[] }) {
   if (!events.length) return null;
   return (
-    <Card title="History" hint={`${events.length} event(s)`}>
-      <ul className="flex flex-col gap-1.5 text-[12px]">
+    <Tile title="History" action={<span className="tag tabular-nums">{events.length}</span>}>
+      <ul className="flex flex-col gap-1.5 text-xs">
         {events.map((event) => (
           <li key={event.id} className="flex gap-2">
             <span className="w-28 shrink-0 tabular-nums text-muted">
               {event.created_at.slice(0, 16).replace("T", " ")}
             </span>
-            <span className="text-muted">{event.kind}</span>
+            <span className="font-semibold text-muted">{event.kind}</span>
             <span className="min-w-0 flex-1 truncate">{event.detail ?? ""}</span>
           </li>
         ))}
       </ul>
-    </Card>
+    </Tile>
   );
 }

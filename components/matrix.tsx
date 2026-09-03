@@ -14,7 +14,7 @@ const QUADRANTS = [
     hint: "Important · urgent",
     important: true,
     urgent: true,
-    accent: "border-danger/30",
+    tone: "text-danger",
   },
   {
     key: "schedule",
@@ -22,7 +22,7 @@ const QUADRANTS = [
     hint: "Important · not urgent — where long-term goals actually move",
     important: true,
     urgent: false,
-    accent: "border-accent/30",
+    tone: "text-accent",
   },
   {
     key: "delegate",
@@ -30,7 +30,7 @@ const QUADRANTS = [
     hint: "Urgent · not important",
     important: false,
     urgent: true,
-    accent: "border-warn/30",
+    tone: "text-warn",
   },
   {
     key: "drop",
@@ -38,7 +38,7 @@ const QUADRANTS = [
     hint: "Neither — question why it exists",
     important: false,
     urgent: false,
-    accent: "border-line",
+    tone: "text-muted",
   },
 ] as const;
 
@@ -55,13 +55,13 @@ export function Matrix({ tasks, today }: { tasks: TaskView[]; today: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {QUADRANTS.map((q) => {
         const bucket = tasks.filter(
           (t) => (t.important === 1) === q.important && (t.urgent === 1) === q.urgent,
         );
         return (
-          <div
+          <section
             key={q.key}
             onDragOver={(e) => {
               e.preventDefault();
@@ -74,30 +74,27 @@ export function Matrix({ tasks, today }: { tasks: TaskView[]; today: string }) {
               const id = e.dataTransfer.getData("text/task-id");
               if (id) move(id, q.important, q.urgent);
             }}
-            className={cn(
-              "flex min-h-[220px] flex-col rounded-xl border bg-surface/60 transition",
-              over === q.key ? "border-accent/60 bg-surface-2" : q.accent,
-            )}
+            className={cn("tile min-h-[240px] transition", over === q.key && "border-accent bg-accent/5")}
           >
-            <header className="flex items-baseline justify-between gap-2 border-b border-line px-3 py-2">
+            <header className="tile-head">
               <div>
-                <h3 className="text-[12.5px] font-semibold">{q.title}</h3>
-                <p className="text-[10.5px] text-muted">{q.hint}</p>
+                <h3 className={cn("text-lg font-extrabold tracking-tight", q.tone)}>{q.title}</h3>
+                <p className="text-xs text-muted">{q.hint}</p>
               </div>
-              <span className="text-[11px] tabular-nums text-muted">{bucket.length}</span>
+              <span className="tag tabular-nums">{bucket.length}</span>
             </header>
-            <div className="flex flex-col gap-1 p-1.5">
+            <div className="flex flex-col gap-2">
               {bucket.length ? (
                 bucket.map((task) => (
-                  <TaskRow key={task.id} task={task} today={today} draggable className="bg-surface" />
+                  <TaskRow key={task.id} task={task} today={today} draggable compact />
                 ))
               ) : (
-                <p className="px-2 py-6 text-center text-[12px] text-muted">
+                <p className="rounded-inner border border-dashed border-line px-3 py-6 text-center text-sm text-muted">
                   Drag tasks here to reclassify them.
                 </p>
               )}
             </div>
-          </div>
+          </section>
         );
       })}
     </div>

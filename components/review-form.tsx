@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { saveReview } from "@/lib/actions";
-import { Card } from "./ui";
+import { Tile } from "./ui";
 
 export function ReviewForm({
   kind,
@@ -24,15 +24,15 @@ export function ReviewForm({
   const [saved, setSaved] = useState(false);
 
   return (
-    <Card
+    <Tile
       title={`${kind[0].toUpperCase()}${kind.slice(1)} review · ${periodKey}`}
       hint="Answers are kept, so you can compare periods later"
-      action={saved ? <span className="text-[11.5px] text-accent">Saved</span> : null}
+      action={saved ? <span className="tag tag-accent">Saved</span> : null}
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {fields.map((field) => (
           <div key={field.key}>
-            <label className="label" htmlFor={field.key}>
+            <label className="label text-sm text-ink" htmlFor={field.key}>
               {field.label}
             </label>
             <textarea
@@ -65,6 +65,6 @@ export function ReviewForm({
           </button>
         </div>
       </div>
-    </Card>
+    </Tile>
   );
 }

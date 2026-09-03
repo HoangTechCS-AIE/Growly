@@ -6,13 +6,20 @@ import { recentTargets, searchCommand } from "@/lib/actions";
 import { quickAdd } from "@/lib/quickadd";
 import { snippetParts, type SearchHit } from "@/lib/types";
 import { cn } from "@/lib/util";
-import { IconSearch } from "./icons";
+import { IconNote, IconPlus, IconSearch, IconTarget, IconTask } from "./icons";
 
 const KIND_LABEL: Record<SearchHit["kind"], string> = {
   note: "Page",
   task: "Task",
   project: "Project",
   goal: "Goal",
+};
+
+const KIND_ICON: Record<SearchHit["kind"], (p: { className?: string }) => React.ReactElement> = {
+  note: IconNote,
+  task: IconTask,
+  project: IconTarget,
+  goal: IconTarget,
 };
 
 /** Snippets arrive with matched runs fenced by control characters, never HTML. */
@@ -56,8 +63,14 @@ export function CommandPalette() {
         setOpen((current) => !current);
       }
     }
+    // Buttons in the top bar and the `/` shortcut open it through this event.
+    const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("growly:palette", onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("growly:palette", onOpen);
+    };
   }, []);
 
   useEffect(() => {
@@ -125,7 +138,7 @@ export function CommandPalette() {
     >
       <div className="cp-panel" role="dialog" aria-modal="true" aria-label="Search and commands">
         <div className="cp-input">
-          <IconSearch className="h-4 w-4 shrink-0 text-muted" />
+          <IconSearch className="h-5 w-5 shrink-0 text-muted" />
           <input
             ref={inputRef}
             value={query}
@@ -154,26 +167,31 @@ export function CommandPalette() {
         <div ref={listRef} className="cp-list">
           {!trimmed && hits.length > 0 && <p className="cp-heading">Recent pages</p>}
 
-          {hits.map((hit, index) => (
-            <button
-              key={`${hit.kind}-${hit.id}`}
-              type="button"
-              data-index={index}
-              className={cn("cp-item", index === active && "cp-item-active")}
-              onMouseEnter={() => setActive(index)}
-              onClick={() => go(hit.href)}
-            >
-              <span className="cp-icon">{hit.icon || (hit.kind === "note" ? "📄" : "•")}</span>
-              <span className="min-w-0 flex-1">
-                <span className="cp-title">{hit.title || "Untitled"}</span>
-                <Snippet text={hit.snippet} />
-              </span>
-              <span className="cp-meta">
-                {hit.context && <span className="cp-context">{hit.context}</span>}
-                <span className="chip chip-plain">{KIND_LABEL[hit.kind]}</span>
-              </span>
-            </button>
-          ))}
+          {hits.map((hit, index) => {
+            const Icon = KIND_ICON[hit.kind];
+            return (
+              <button
+                key={`${hit.kind}-${hit.id}`}
+                type="button"
+                data-index={index}
+                className={cn("cp-item", index === active && "cp-item-active")}
+                onMouseEnter={() => setActive(index)}
+                onClick={() => go(hit.href)}
+              >
+                <span className="cp-icon" aria-hidden>
+                  {hit.icon ? hit.icon : <Icon />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="cp-title">{hit.title || "Untitled"}</span>
+                  <Snippet text={hit.snippet} />
+                </span>
+                <span className="cp-meta">
+                  {hit.context && <span className="cp-context">{hit.context}</span>}
+                  <span className="tag">{KIND_LABEL[hit.kind]}</span>
+                </span>
+              </button>
+            );
+          })}
 
           {trimmed && !busy && hits.length === 0 && (
             <p className="cp-empty">No matches for “{trimmed}”.</p>
@@ -187,7 +205,9 @@ export function CommandPalette() {
               onMouseEnter={() => setActive(hits.length)}
               onClick={capture}
             >
-              <span className="cp-icon">＋</span>
+              <span className="cp-icon text-accent" aria-hidden>
+                <IconPlus />
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="cp-title">Add task “{trimmed}”</span>
                 <span className="cp-snippet">
@@ -210,7 +230,7 @@ export function CommandPalette() {
             <kbd>Esc</kbd> close
           </span>
           <span className="ml-auto">
-            <kbd>/</kbd> jumps to the full search page
+            <kbd>/</kbd> or <kbd>⌘K</kbd> opens this anywhere
           </span>
         </div>
       </div>

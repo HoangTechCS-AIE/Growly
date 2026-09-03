@@ -35,7 +35,7 @@ npm run test:flows           # data-layer smoke test on a throwaway database
 ```
 
 `scripts/browser-test.mjs` covers what those cannot: real clicks, drag and drop,
-autosave, the mobile drawer, the theme toggle and colour contrast. It needs
+autosave, the mobile More sheet, the theme toggle and colour contrast. It needs
 Chrome plus `npm i -D puppeteer-core`, and a server pointed at a throwaway
 database — the recipe is in the file's header.
 
@@ -68,25 +68,35 @@ inherit the note's project and goal.
 (what was completed, what is still open, time per goal, alignment, drift), so the
 page is never blank, and answers are stored per period.
 
-**Search** — one box across tasks, notes, projects and goals. Press `/` to jump to
-it, `⌘K` / `Ctrl+K` to focus quick add.
+**Search** — one box across tasks, notes, projects and goals. Press `/` or
+`⌘K` / `Ctrl+K` anywhere for the palette, which also quick-adds a task.
 
 ## Interface
+
+**Bento, not boxes-in-boxes.** Every screen is a grid of rounded tiles on a
+warm neutral canvas, set in Plus Jakarta Sans on one type scale
+(12 · 13 · 15 · 17 · 20 · 24 · 30 · 36). Today leads with one deep-green
+spotlight tile — the block running now, the next one, or the first of the
+Big 3 — and every task row spells out the ladder it climbs: project → goal.
+Tags are kept to the ones that change what you do next (blocked, waiting,
+due); everything else lives on the task page. Icons are one stroke family of
+inline SVGs; there are no emoji or text glyphs standing in for controls.
 
 **Light and dark.** The palette follows the system by default; the toggle in the
 header cycles system → light → dark and remembers the choice. A tiny inline
 script applies it before the first paint, so there is no flash. Every colour is
 a role (`--ink`, `--muted`, `--accent`, `--surface`…) defined once per theme;
-project and area colours are hues that derive their chip, dot and calendar-block
-styles through `color-mix`, so a new colour needs no per-theme classes. Every
-text pair clears WCAG AA (worst case 5.3:1 in light, 6:1 in dark) and the
-`browser-test` script measures it.
+project and area colours are hues that derive their chip, dot, tile and
+calendar-block styles through `color-mix`, so a new colour needs no per-theme
+classes. Every text pair clears WCAG AA and the `browser-test` script measures it.
 
-**Phone and desktop.** Below `lg` the rail becomes a drawer (Escape closes it,
-focus moves in and returns to the button), the header collapses to one row plus
-a full-width quick add, the board turns into a snap-scrolling carousel, and the
-calendar and timeline scroll horizontally instead of crushing their columns. No
-page scrolls sideways on a 390px screen.
+**Phone and desktop.** From `lg` up an icon rail sits on the left; below it the
+app gets a bottom tab bar (Today, Tasks, Calendar, Notes, More — the More sheet
+holds Projects, Strategy, Review, Search and Settings; Escape closes it and
+focus returns to the button). The header collapses to one row plus a full-width
+quick add, the board turns into a snap-scrolling carousel, the calendar opens on
+the day view, and the week grid and timeline scroll horizontally instead of
+crushing their columns. No page scrolls sideways on a 390px screen.
 
 **Keyboard and pointer-free use.** One visible focus ring on everything
 focusable, a skip link, `aria-current` on the active nav item, accessible names

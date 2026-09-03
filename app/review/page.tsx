@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { IconChevronLeft, IconChevronRight } from "@/components/icons";
 import { ReviewForm } from "@/components/review-form";
 import { TaskList } from "@/components/task-list";
-import { Card, Meter, PageHeader, StatTile } from "@/components/ui";
+import { EmptyState, Meter, PageHeader, SegLinks, StatTile, Tile } from "@/components/ui";
 import {
   getReview, getSettings, listProjects, listTasks, loggedMinutesByDay,
   projectFocusScore, stuckItems, timePerProject,
@@ -10,7 +11,6 @@ import {
   addDaysISO, endOfMonthISO, formatDate, formatDateLong, formatDuration, monthKey, monthName,
   pct, startOfMonthISO, startOfWeekISO, todayISO, weekKey,
 } from "@/lib/util";
-import { cn } from "@/lib/util";
 
 export const dynamic = "force-dynamic";
 
@@ -59,18 +59,20 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
     today,
   ).filter((t) => t.completed_at && t.completed_at.slice(0, 10) >= from && t.completed_at.slice(0, 10) <= to);
   const open = listTasks({ scheduledFrom: from, scheduledTo: to }, today);
+  const stillOpen = open.filter((t) => t.status !== "done");
   const inProject = projectFocusScore(from, to);
   const invested = timePerProject(from, to);
   const projects = listProjects({ status: "active" });
   const stuck = stuckItems(today);
   const logged = loggedMinutesByDay(from, to);
   const totalLogged = logged.reduce((sum, row) => sum + row.minutes, 0);
+  const drifting = stuck.postponed.length + stuck.staleProjects.length + stuck.idleGoals.length;
 
   const title =
     kind === "daily"
       ? formatDateLong(date)
       : kind === "weekly"
-        ? `${formatDate(from)} — ${formatDate(to)} · ${periodKey}`
+        ? `${formatDate(from)} — ${formatDate(to)}`
         : `${monthName(date)} ${date.slice(0, 4)}`;
 
   const shift = (delta: number) => {
@@ -84,40 +86,36 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
   return (
     <div className="mx-auto max-w-[1300px]">
       <PageHeader
-        title="Review"
-        subtitle={title}
+        eyebrow={`Review · ${periodKey}`}
+        title={title}
         actions={
           <>
-            <div className="flex rounded-lg border border-line bg-surface p-0.5">
-              {(["daily", "weekly", "monthly"] as const).map((k) => (
-                <Link
-                  key={k}
-                  href={`/review?kind=${k}&date=${date}`}
-                  className={cn(
-                    "rounded-[7px] px-2.5 py-1.5 text-[12.5px] font-medium capitalize transition",
-                    kind === k ? "bg-surface-3 text-ink" : "text-muted hover:text-ink",
-                  )}
-                >
-                  {k}
-                </Link>
-              ))}
+            <SegLinks
+              value={kind}
+              items={(["daily", "weekly", "monthly"] as const).map((k) => ({
+                key: k,
+                label: k[0].toUpperCase() + k.slice(1),
+                href: `/review?kind=${k}&date=${date}`,
+              }))}
+            />
+            <div className="flex items-center gap-1">
+              <Link href={`/review?kind=${kind}&date=${shift(-1)}`} className="btn btn-outline btn-icon" aria-label="Previous period">
+                <IconChevronLeft className="h-4 w-4" />
+              </Link>
+              <Link href={`/review?kind=${kind}&date=${today}`} className="btn btn-outline">
+                Now
+              </Link>
+              <Link href={`/review?kind=${kind}&date=${shift(1)}`} className="btn btn-outline btn-icon" aria-label="Next period">
+                <IconChevronRight className="h-4 w-4" />
+              </Link>
             </div>
-            <Link href={`/review?kind=${kind}&date=${shift(-1)}`} className="btn btn-sm">
-              ←
-            </Link>
-            <Link href={`/review?kind=${kind}&date=${today}`} className="btn btn-sm">
-              Now
-            </Link>
-            <Link href={`/review?kind=${kind}&date=${shift(1)}`} className="btn btn-sm">
-              →
-            </Link>
           </>
         }
       />
 
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatTile label="Completed" value={completed.length} sub={`in this ${kind.replace("ly", "")} period`} />
-        <StatTile label="Still open" value={open.filter((t) => t.status !== "done").length} />
+      <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatTile label="Completed" value={completed.length} sub={`in this ${kind.replace("ly", "")}`} />
+        <StatTile label="Still open" value={stillOpen.length} sub="scheduled in the period" />
         <StatTile label="Time logged" value={formatDuration(totalLogged) || "0m"} />
         <StatTile
           label="In a project"
@@ -127,7 +125,7 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
           <ReviewForm
             kind={kind}
@@ -137,16 +135,18 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
           />
 
           {kind !== "daily" && (
-            <Card title="Project progress" hint="Where the period's effort actually landed">
-              <ul className="flex flex-col gap-3">
+            <Tile title="Project progress" hint="Where the period's effort actually landed">
+              <ul className="flex flex-col gap-3.5">
                 {projects.map((project) => {
                   const minutes = invested.find((i) => i.project_id === project.id)?.minutes ?? 0;
                   const doneThisPeriod = completed.filter((t) => t.project_id === project.id).length;
                   return (
-                    <li key={project.id}>
-                      <div className="mb-1 flex items-baseline justify-between gap-2">
-                        <span className="truncate text-[13px]">{project.title}</span>
-                        <span className="shrink-0 text-[11px] tabular-nums text-muted">
+                    <li key={project.id} className="flex flex-col gap-1.5">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <Link href={`/projects/${project.id}`} className="truncate text-sm font-semibold hover:text-accent">
+                          {project.title}
+                        </Link>
+                        <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">
                           {doneThisPeriod} done · {formatDuration(minutes) || "0m"}
                         </span>
                       </div>
@@ -155,67 +155,71 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
                         max={Math.max(project.task_total, 1)}
                         tone={doneThisPeriod > 0 ? "accent" : "muted"}
                       />
-                      <p className="mt-1 text-[11px] text-muted">
+                      <p className="text-xs text-muted">
                         {pct(project.task_done, project.task_total)}% of all its tasks done
                         {doneThisPeriod === 0 && " · nothing moved in this period"}
                       </p>
                     </li>
                   );
                 })}
-                {!projects.length && <p className="text-[12.5px] text-muted">No active projects.</p>}
+                {!projects.length && <p className="text-sm text-muted">No active projects.</p>}
               </ul>
-            </Card>
+            </Tile>
           )}
         </div>
 
         <div className="flex flex-col gap-4">
-          <Card title="Completed" hint={`${completed.length} task(s)`}>
+          <Tile title="Completed" action={<span className="tag tabular-nums">{completed.length}</span>}>
             <TaskList tasks={completed.slice(0, 15)} today={today} empty="Nothing completed yet." />
-          </Card>
+          </Tile>
 
-          <Card title="Still open in this period" hint="Reschedule, delegate or drop">
-            <TaskList
-              tasks={open.filter((t) => t.status !== "done").slice(0, 15)}
-              today={today}
-              empty="Nothing left open."
-            />
-          </Card>
+          <Tile
+            title="Still open in this period"
+            hint="Reschedule, delegate or drop"
+            action={<span className="tag tabular-nums">{stillOpen.length}</span>}
+          >
+            <TaskList tasks={stillOpen.slice(0, 15)} today={today} empty="Nothing left open." />
+          </Tile>
 
-          {(stuck.postponed.length > 0 || stuck.staleProjects.length > 0 || stuck.idleGoals.length > 0) && (
-            <Card title="Drift check" hint="Repeatedly postponed, stalled or idle">
-              <ul className="flex flex-col gap-2 text-[12.5px]">
+          <Tile title="Drift check" hint="Repeatedly postponed, stalled or idle">
+            {drifting ? (
+              <ul className="flex flex-col">
                 {stuck.postponed.map((task) => (
-                  <li key={task.id} className="flex items-center gap-2">
-                    <span className="chip border-warn/30 bg-warn/10 text-warn">×{task.postponed_count}</span>
-                    <Link href={`/tasks/${task.id}`} className="truncate hover:text-accent">
+                  <li key={task.id} className="list-row">
+                    <span className="tag tag-warn">×{task.postponed_count}</span>
+                    <Link href={`/tasks/${task.id}`} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-accent">
                       {task.title}
                     </Link>
                   </li>
                 ))}
                 {stuck.staleProjects.map((project) => (
-                  <li key={project.id} className="flex items-center gap-2">
-                    <span className="chip chip-plain">stalled project</span>
-                    <span className="truncate">{project.title}</span>
+                  <li key={project.id} className="list-row">
+                    <span className="tag">stalled</span>
+                    <Link href={`/projects/${project.id}`} className="min-w-0 flex-1 truncate text-sm font-semibold hover:text-accent">
+                      {project.title}
+                    </Link>
                   </li>
                 ))}
                 {stuck.idleGoals.map((goal) => (
-                  <li key={goal.id} className="flex items-center gap-2">
-                    <span className="chip chip-plain">idle goal</span>
-                    <span className="truncate">{goal.title}</span>
+                  <li key={goal.id} className="list-row">
+                    <span className="tag">idle goal</span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
                   </li>
                 ))}
               </ul>
-            </Card>
-          )}
+            ) : (
+              <EmptyState compact title="Nothing is drifting" />
+            )}
+          </Tile>
 
-          <Card title="Time invested" hint={`${formatDuration(totalLogged) || "0m"} logged in this period`}>
+          <Tile title="Time invested" hint={`${formatDuration(totalLogged) || "0m"} logged in this period`}>
             {invested.length ? (
-              <ul className="flex flex-col gap-2">
+              <ul className="flex flex-col gap-3">
                 {invested.map((row) => (
-                  <li key={row.project_id ?? "none"}>
-                    <div className="mb-1 flex items-baseline justify-between gap-2">
-                      <span className="truncate text-[12.5px]">{row.project_title ?? "Not in a project"}</span>
-                      <span className="shrink-0 text-[11px] tabular-nums text-muted">
+                  <li key={row.project_id ?? "none"} className="flex flex-col gap-1.5">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="truncate text-sm font-semibold">{row.project_title ?? "Not in a project"}</span>
+                      <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">
                         {formatDuration(row.minutes)}
                       </span>
                     </div>
@@ -228,11 +232,11 @@ export default async function ReviewPage({ searchParams }: PageProps<"/review">)
                 ))}
               </ul>
             ) : (
-              <p className="text-[12.5px] text-muted">
+              <p className="text-sm text-muted">
                 No time logged yet. Log minutes on a task to see where the period actually went.
               </p>
             )}
-          </Card>
+          </Tile>
         </div>
       </div>
     </div>

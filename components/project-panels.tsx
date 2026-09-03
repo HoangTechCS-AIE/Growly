@@ -8,7 +8,8 @@ import {
 } from "@/lib/actions";
 import type { NoteView, ProjectStatus, ProjectView, TaskView } from "@/lib/types";
 import { chipTone, cn, formatDuration, pct, relativeDay } from "@/lib/util";
-import { IconNote, IconPlus, IconTask } from "./icons";
+import { IconCheck, IconNote, IconPlus, IconTask } from "./icons";
+import { Meter, Tile } from "./ui";
 
 const STATUSES: ProjectStatus[] = ["planned", "active", "paused", "done"];
 const STATUS_LABEL: Record<ProjectStatus, string> = {
@@ -42,7 +43,7 @@ export function NewProjectButton() {
   if (!open) {
     return (
       <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
-        <IconPlus className="h-3.5 w-3.5" />
+        <IconPlus className="h-4 w-4" />
         New project
       </button>
     );
@@ -60,7 +61,7 @@ export function NewProjectButton() {
         }}
         placeholder="What is this project?"
         aria-label="Project name"
-        className="input w-64"
+        className="input w-64 rounded-full"
       />
       <button type="button" className="btn btn-primary" disabled={pending} onClick={create}>
         Create
@@ -75,23 +76,29 @@ export function NewProjectButton() {
 export function ProjectCard({ project }: { project: ProjectView }) {
   const share = pct(project.task_done, project.task_total);
   return (
-    <Link href={`/projects/${project.id}`} className="pj-card">
-      <div className="pj-card-head">
-        <span className={cn("pj-dot", `tone-${project.color}`)} aria-hidden />
-        <h3 className="min-w-0 flex-1 truncate text-[14px] font-semibold">{project.title}</h3>
+    <Link href={`/projects/${project.id}`} className="tile gap-3 transition hover:border-line-strong">
+      <div className="flex items-center gap-2.5">
+        <span className={cn("h-3 w-3 shrink-0 rounded-full tone-dot", `tone-${project.color}`)} aria-hidden />
+        <h3 className="min-w-0 flex-1 truncate text-lg font-bold tracking-tight">{project.title}</h3>
         <span className={chipTone(project.color)}>{STATUS_LABEL[project.status]}</span>
       </div>
-      {project.description && <p className="pj-card-desc">{project.description}</p>}
-      <div className="pj-bar" role="img" aria-label={`${share}% of tasks done`}>
-        <span style={{ width: `${share}%` }} />
-      </div>
-      <p className="pj-card-meta">
-        <span>
-          <IconTask className="mr-1 inline h-3 w-3" />
-          {project.task_done}/{project.task_total} tasks
+      {project.description && (
+        <p className="line-clamp-2 text-sm leading-relaxed text-muted">{project.description}</p>
+      )}
+      <div className="flex items-baseline justify-between text-xs font-semibold text-muted">
+        <span>{share}% done</span>
+        <span className="tabular-nums">
+          {project.task_done} / {project.task_total}
         </span>
-        <span>
-          <IconNote className="mr-1 inline h-3 w-3" />
+      </div>
+      <Meter value={project.task_done} max={Math.max(project.task_total, 1)} />
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+        <span className="inline-flex items-center gap-1">
+          <IconTask className="h-3.5 w-3.5" />
+          {project.task_total} task{project.task_total === 1 ? "" : "s"}
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <IconNote className="h-3.5 w-3.5" />
           {project.note_total} note{project.note_total === 1 ? "" : "s"}
         </span>
         {project.due_date && <span className="ml-auto">due {project.due_date}</span>}
@@ -130,9 +137,9 @@ export function ProjectHeader({ project }: { project: ProjectView }) {
     });
 
   return (
-    <div className="pj-header">
-      <div className="pj-header-top">
-        <span className={cn("pj-dot pj-dot-lg", `tone-${project.color}`)} aria-hidden />
+    <div className="tile gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className={cn("h-4 w-4 shrink-0 rounded-full tone-dot", `tone-${project.color}`)} aria-hidden />
         <input
           value={form.title}
           onChange={(event) => {
@@ -140,34 +147,36 @@ export function ProjectHeader({ project }: { project: ProjectView }) {
             setDirty(true);
           }}
           onBlur={save}
-          className="pj-title"
+          className="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-extrabold tracking-tight text-ink outline-none placeholder:text-muted/50 lg:text-3xl"
           aria-label="Project name"
           placeholder="Untitled project"
         />
-        <select
-          value={project.status}
-          onChange={(event) => patch({ status: event.target.value as ProjectStatus })}
-          aria-label="Project status"
-          className="input w-auto py-1.5"
-        >
-          {STATUSES.map((status) => (
-            <option key={status} value={status}>
-              {STATUS_LABEL[status]}
-            </option>
-          ))}
-        </select>
-        <select
-          value={project.color}
-          onChange={(event) => patch({ color: event.target.value })}
-          aria-label="Project colour"
-          className="input w-auto py-1.5"
-        >
-          {COLORS.map((color) => (
-            <option key={color} value={color}>
-              {color}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={project.status}
+            onChange={(event) => patch({ status: event.target.value as ProjectStatus })}
+            aria-label="Project status"
+            className="input input-sm w-auto rounded-full font-semibold"
+          >
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {STATUS_LABEL[status]}
+              </option>
+            ))}
+          </select>
+          <select
+            value={project.color}
+            onChange={(event) => patch({ color: event.target.value })}
+            aria-label="Project colour"
+            className="input input-sm w-auto rounded-full font-semibold capitalize"
+          >
+            {COLORS.map((color) => (
+              <option key={color} value={color}>
+                {color}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <textarea
@@ -180,26 +189,31 @@ export function ProjectHeader({ project }: { project: ProjectView }) {
         rows={2}
         placeholder="What is this project about?"
         aria-label="Project description"
-        className="pj-desc"
+        className="w-full resize-y rounded-ctl border border-transparent bg-transparent px-2 py-1.5 text-base leading-relaxed text-ink outline-none transition placeholder:text-muted/70 hover:bg-surface-2 focus:border-line focus:bg-surface-2"
       />
 
-      <div className="pj-header-meta">
-        <label>
-          <span>Start</span>
+      <div className="flex flex-wrap items-center gap-4 border-t border-line pt-4 text-sm text-muted">
+        <label className="flex items-center gap-2">
+          <span className="font-semibold">Start</span>
           <input
             type="date"
             defaultValue={project.start_date ?? ""}
             onChange={(event) => patch({ start_date: event.target.value || null })}
+            className="input input-sm w-auto"
           />
         </label>
-        <label>
-          <span>Due</span>
+        <label className="flex items-center gap-2">
+          <span className="font-semibold">Due</span>
           <input
             type="date"
             defaultValue={project.due_date ?? ""}
             onChange={(event) => patch({ due_date: event.target.value || null })}
+            className="input input-sm w-auto"
           />
         </label>
+        {project.goal_title && (
+          <span className="tag tag-accent">{project.goal_title}</span>
+        )}
         <button
           type="button"
           className="btn btn-sm btn-ghost ml-auto"
@@ -215,6 +229,46 @@ export function ProjectHeader({ project }: { project: ProjectView }) {
           Archive project
         </button>
       </div>
+    </div>
+  );
+}
+
+function AddRow({
+  placeholder,
+  label,
+  value,
+  onChange,
+  onSubmit,
+  pending,
+}: {
+  placeholder: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  pending: boolean;
+}) {
+  return (
+    <div className="relative">
+      <IconPlus className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-muted" />
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={(event) => event.key === "Enter" && onSubmit()}
+        placeholder={placeholder}
+        aria-label={label}
+        className="input rounded-full pr-20 pl-10"
+      />
+      {value.trim() && (
+        <button
+          type="button"
+          className="btn btn-sm btn-primary absolute top-1/2 right-1.5 -translate-y-1/2"
+          disabled={pending}
+          onClick={onSubmit}
+        >
+          Add
+        </button>
+      )}
     </div>
   );
 }
@@ -244,42 +298,35 @@ export function ProjectTasks({
   const done = tasks.filter((task) => task.status === "done");
 
   return (
-    <section className="pj-section">
-      <header className="pj-section-head">
-        <h2 className="section-title">Tasks</h2>
-        <span className="text-[11px] text-muted">
-          {done.length}/{tasks.length} done
+    <Tile
+      title="Tasks"
+      action={
+        <span className="tag tabular-nums">
+          {done.length} / {tasks.length} done
         </span>
-      </header>
-
-      <div className="pj-add">
-        <IconPlus className="h-3.5 w-3.5 shrink-0 text-muted" />
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && add()}
-          placeholder="Add a small task and press Enter"
-          aria-label="New task in this project"
-        />
-        {title.trim() && (
-          <button type="button" className="btn btn-sm" disabled={pending} onClick={add}>
-            Add
-          </button>
-        )}
-      </div>
+      }
+    >
+      <AddRow
+        placeholder="Add a small task and press Enter"
+        label="New task in this project"
+        value={title}
+        onChange={setTitle}
+        onSubmit={add}
+        pending={pending}
+      />
 
       {tasks.length === 0 ? (
-        <p className="pj-empty">No tasks yet. Add the first small step above.</p>
+        <p className="py-3 text-sm text-muted">No tasks yet. Add the first small step above.</p>
       ) : (
-        <ul className="pj-list">
+        <ul className="flex flex-col">
           {[...open, ...done].map((task) => (
-            <li key={task.id}>
+            <li key={task.id} className="list-row">
               <button
                 type="button"
                 role="checkbox"
                 aria-checked={task.status === "done"}
                 aria-label={`Mark "${task.title}" ${task.status === "done" ? "not done" : "done"}`}
-                className={cn("nb-check", task.status === "done" && "nb-check-on")}
+                className={cn("check", task.status === "done" && "check-on")}
                 onClick={() =>
                   startTransition(async () => {
                     await toggleTaskDone(task.id);
@@ -287,25 +334,28 @@ export function ProjectTasks({
                   })
                 }
               >
-                {task.status === "done" ? "✓" : ""}
+                <IconCheck className="h-3.5 w-3.5" strokeWidth={3} />
               </button>
               <Link
                 href={`/tasks/${task.id}`}
-                className={cn("pj-item-title", task.status === "done" && "pj-item-done")}
+                className={cn(
+                  "min-w-0 flex-1 truncate text-base font-semibold hover:text-accent",
+                  task.status === "done" && "font-medium text-muted line-through",
+                )}
               >
                 {task.title}
               </Link>
               {task.estimate_minutes ? (
-                <span className="pj-item-meta">{formatDuration(task.estimate_minutes)}</span>
+                <span className="tag">{formatDuration(task.estimate_minutes)}</span>
               ) : null}
               {task.scheduled_date && (
-                <span className="pj-item-meta">{relativeDay(task.scheduled_date, today)}</span>
+                <span className="tag">{relativeDay(task.scheduled_date, today)}</span>
               )}
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Tile>
   );
 }
 
@@ -324,45 +374,33 @@ export function ProjectNotes({ project, notes }: { project: ProjectView; notes: 
   };
 
   return (
-    <section className="pj-section">
-      <header className="pj-section-head">
-        <h2 className="section-title">Notes</h2>
-        <span className="text-[11px] text-muted">{notes.length}</span>
-      </header>
-
-      <div className="pj-add">
-        <IconPlus className="h-3.5 w-3.5 shrink-0 text-muted" />
-        <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && add()}
-          placeholder="Add a note and press Enter"
-          aria-label="New note in this project"
-        />
-        {title.trim() && (
-          <button type="button" className="btn btn-sm" disabled={pending} onClick={add}>
-            Add
-          </button>
-        )}
-      </div>
+    <Tile title="Notes" action={<span className="tag tabular-nums">{notes.length}</span>}>
+      <AddRow
+        placeholder="Add a note and press Enter"
+        label="New note in this project"
+        value={title}
+        onChange={setTitle}
+        onSubmit={add}
+        pending={pending}
+      />
 
       {notes.length === 0 ? (
-        <p className="pj-empty">No notes yet.</p>
+        <p className="py-3 text-sm text-muted">No notes yet.</p>
       ) : (
-        <ul className="pj-list">
+        <ul className="flex flex-col">
           {notes.map((note) => (
-            <li key={note.id}>
-              <span className="shrink-0 text-[14px]" aria-hidden>
-                {note.icon || "📄"}
+            <li key={note.id} className="list-row">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base text-muted" aria-hidden>
+                {note.icon || <IconNote className="h-4 w-4" />}
               </span>
-              <Link href={`/notes/${note.id}`} className="pj-item-title">
+              <Link href={`/notes/${note.id}`} className="min-w-0 flex-1 truncate text-base font-semibold hover:text-accent">
                 {note.title || "Untitled"}
               </Link>
-              <span className="pj-item-meta">{note.updated_at.slice(0, 10)}</span>
+              <span className="text-xs text-muted">{note.updated_at.slice(0, 10)}</span>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Tile>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { IconNote, IconSearch, IconTarget, IconTask } from "@/components/icons";
+import { EmptyState, PageHeader, Tile } from "@/components/ui";
 import { searchAll } from "@/lib/queries";
 import { snippetParts, type SearchHit } from "@/lib/types";
 
@@ -12,11 +13,18 @@ const KIND_LABEL: Record<SearchHit["kind"], string> = {
   goal: "Goal",
 };
 
+const KIND_ICON: Record<SearchHit["kind"], (p: { className?: string }) => React.ReactElement> = {
+  note: IconNote,
+  task: IconTask,
+  project: IconTarget,
+  goal: IconTarget,
+};
+
 /** Matched runs arrive fenced by control characters, so nothing here is HTML. */
 function Snippet({ text }: { text: string }) {
   if (!text.trim()) return null;
   return (
-    <p className="cp-snippet mt-0.5 text-[12px]">
+    <p className="cp-snippet mt-0.5 text-sm">
       {snippetParts(text).map((part, index) =>
         part.hit ? <mark key={index}>{part.text}</mark> : <span key={index}>{part.text}</span>,
       )}
@@ -33,61 +41,67 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
   return (
     <div className="mx-auto max-w-[900px]">
       <PageHeader
-        title={q ? `Search: ${q}` : "Search"}
+        title={q ? `“${q}”` : "Search"}
+        eyebrow={q ? "Search" : undefined}
         subtitle={
           q
-            ? `${hits.length} result(s), best match first — accents are optional, so "ke hoach" finds "kế hoạch"`
+            ? `${hits.length} result${hits.length === 1 ? "" : "s"}, best match first — accents are optional, so "ke hoach" finds "kế hoạch"`
             : "Full-text search across pages, tasks, projects and goals"
         }
       />
 
-      <form action="/search" className="mb-4">
+      <form action="/search" className="relative mb-5">
+        <IconSearch className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-muted" />
         <input
           name="q"
           defaultValue={q}
           placeholder="Search pages, tasks, projects, goals…"
-          className="input"
+          aria-label="Search"
+          className="input h-12 rounded-full bg-surface pl-12 text-base"
           autoFocus
         />
       </form>
 
       {!q && (
-        <Card>
+        <Tile>
           <EmptyState
             title="Type something to search"
-            hint="Press / to jump here, or Ctrl/Cmd+K for the quick palette."
+            hint="Press / or Ctrl/Cmd+K anywhere for the quick palette."
           />
-        </Card>
+        </Tile>
       )}
 
       {q && hits.length === 0 && (
-        <Card>
+        <Tile>
           <EmptyState title="No matches" hint="Try a shorter word — the last one is matched as a prefix." />
-        </Card>
+        </Tile>
       )}
 
       {hits.length > 0 && (
-        <Card bodyClassName="p-1.5">
+        <Tile className="gap-0 p-2">
           <ul className="flex flex-col">
-            {hits.map((hit) => (
-              <li key={`${hit.kind}-${hit.id}`}>
-                <Link href={hit.href} className="flex gap-2.5 rounded-lg px-2 py-2 transition hover:bg-surface-2">
-                  <span className="shrink-0 text-[15px] leading-5" aria-hidden>
-                    {hit.icon || (hit.kind === "note" ? "📄" : "•")}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[13.5px] font-medium">{hit.title || "Untitled"}</span>
-                      <span className="chip chip-plain">{KIND_LABEL[hit.kind]}</span>
-                      {hit.context && <span className="text-[11px] text-muted">{hit.context}</span>}
+            {hits.map((hit) => {
+              const Icon = KIND_ICON[hit.kind];
+              return (
+                <li key={`${hit.kind}-${hit.id}`}>
+                  <Link href={hit.href} className="flex gap-3 rounded-inner px-3 py-3 transition hover:bg-surface-2">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center text-base text-muted" aria-hidden>
+                      {hit.icon || <Icon className="h-4 w-4" />}
                     </span>
-                    <Snippet text={hit.snippet} />
-                  </span>
-                </Link>
-              </li>
-            ))}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-semibold">{hit.title || "Untitled"}</span>
+                        <span className="tag">{KIND_LABEL[hit.kind]}</span>
+                        {hit.context && <span className="text-xs text-muted">{hit.context}</span>}
+                      </span>
+                      <Snippet text={hit.snippet} />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
-        </Card>
+        </Tile>
       )}
     </div>
   );
