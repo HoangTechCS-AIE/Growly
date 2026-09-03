@@ -233,6 +233,7 @@ export function DayWeekGrid({
                 {hours.map((hour) => (
                   <div
                     key={hour}
+                    data-hour-label={`${hour}`.padStart(2, "0")}
                     className="relative border-b border-line/60 text-[11px] font-semibold text-muted"
                     style={{ height: 60 * PX_PER_MIN }}
                   >
