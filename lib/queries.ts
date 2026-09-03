@@ -1,7 +1,7 @@
 import "server-only";
 import { all, get } from "./db";
 import type {
-  Area, GoalView, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
+  Area, ContentDraft, GoalView, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
   ReviewRecord, SearchHit, SearchKind, Settings, Strategy, Tag, Task, TaskEvent, TaskStatus,
   TaskView, TimeLog, Vision,
 } from "./types";
@@ -861,4 +861,17 @@ export function search(q: string, today = todayISO()) {
     projects: pick("project").map((id) => getProject(id)).filter(Boolean) as ProjectView[],
     goals: pick("goal").map((id) => getGoal(id)).filter(Boolean) as GoalView[],
   };
+}
+
+/* ------------------------------------------------------------------- content */
+
+export function listDrafts(limit = 20): ContentDraft[] {
+  return all<ContentDraft>(
+    "SELECT * FROM content_drafts ORDER BY updated_at DESC LIMIT ?",
+    limit,
+  );
+}
+
+export function getDraft(id: string): ContentDraft | undefined {
+  return get<ContentDraft>("SELECT * FROM content_drafts WHERE id = ?", id);
 }

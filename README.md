@@ -19,24 +19,46 @@ how much of this week actually ladders up to something.
 
 ## Running it
 
+Needs **Node 22.5 or newer** — the data layer uses the built-in `node:sqlite`, which
+does not exist on Node 20 (`ERR_UNKNOWN_BUILTIN_MODULE: node:sqlite`).
+
 ```bash
+cp .env.example .env   # club identity, AI provider, limits — nothing is hardcoded
 npm install
 npm run seed     # optional: a worked example (vision → goal → sprint → projects → tasks → notes)
 npm run dev      # http://localhost:3000
 ```
+
+`.env.example` documents every setting. `.env` is gitignored; Next loads it
+automatically and the scripts under `scripts/` read it through
+`--env-file-if-exists`, so one file covers both. Values entered in Settings → AI
+provider are stored in the database and override the `OPENAI_*` entries there.
+Quote any value that starts with `#` — an unquoted one is read as a comment.
 
 The first visit opens a setup screen: pick the username and password that will
 open Growly from then on. One account guards the whole app — there is no sharing
 and no per-user data. Sign out again from Settings.
 
 Everything lives in `data/growly.db` (SQLite through Node's built-in `node:sqlite`,
-so there is no native build step). Nothing leaves the machine — back it up by
-copying that file. Beside it sits `data/.session-key`, the key that signs session
-cookies; delete it to sign every browser out, or set `GROWLY_SECRET` instead.
+so there is no native build step). Nothing leaves the machine. The connection runs
+in WAL mode, so recent writes sit in `data/growly.db-wal` until SQLite checkpoints
+them — copying `growly.db` on its own can therefore miss the newest work. Back up
+all three files together, or checkpoint first:
+
+```bash
+node -e "new (require('node:sqlite').DatabaseSync)('data/growly.db').exec('PRAGMA wal_checkpoint(TRUNCATE)')"
+cp data/growly.db backup.db
+```
+
+Beside them sits `data/.session-key`, the key that signs session cookies; delete
+it to sign every browser out, or set `GROWLY_SECRET` instead.
 
 ```bash
 npm run build && npm start   # production mode
 npm run test:flows           # data-layer smoke test on a throwaway database
+npm run test:content         # content pipeline against a stub OpenAI-compatible server
+npm run test:document        # .docx/.pdf → brief → post, same stub server
+npm run lint:corpus          # score every real post to keep the content linter honest
 ```
 
 `scripts/browser-test.mjs` covers what those cannot: real clicks, drag and drop,
@@ -76,6 +98,28 @@ inherit the note's project and goal.
 **Review** — daily, weekly and monthly. Each review is pre-filled with real data
 (what was completed, what is still open, time per goal, alignment, drift), so the
 page is never blank, and answers are stored per period.
+
+**Content** — writes Facebook posts for a club page in that page's own voice.
+Point it at an archive of the page's real posts (`data/<post_id>/post.json`, then
+`npm run import:posts`). Start from a blank brief, or drop in the source notice
+as **.docx or .pdf**: the text is pulled out locally — Word tables keep their
+rows paired, and the reader is the ZIP spec rather than a dependency — then read
+once at temperature 0 to fill in the post type, topic and hard facts. That pass
+copies only what the document says and reports what it cannot reconcile (a
+notice dated 2025 whose every deadline is 2026 comes back as a warning, not a
+silent guess), so you check the facts before a word is written. From there it
+picks three genuine posts of the same kind as few-shot examples, prompts any
+OpenAI-compatible endpoint with the measured house style, and scores the result
+against a 15-point linter — length, paragraph shape, emoji used as field labels
+rather than decoration, pronoun consistency, sentence-final particles, banned
+essay connectives, footer and hashtags. A draft that fails goes back for one
+repair pass; whatever still fails is shown rather than hidden, and the score
+updates live as you edit. The rules and every number behind them are in
+`docs/hit-content-rules.md`; `npm run lint:corpus` re-scores the real archive, so
+if genuine posts start failing, the linter is wrong and says so. Nothing about
+one particular club is baked into the code — the name, fanpage, address and
+hashtags all come from `.env`, and the linter is handed the footer marker rather
+than assuming it, so pointing this at another page is a config change.
 
 ## Interface
 
@@ -119,11 +163,13 @@ something there, or set the day, time and status on the task itself.
 ## Layout
 
 ```
-app/          routes: today (/), tasks, calendar, notes, projects, strategy, review, settings
+app/          routes: today (/), tasks, calendar, notes, projects, strategy, review,
+              content, settings
 components/   UI — client components own interaction, pages stay server components
 deploy/       compose file, remote deploy script and Caddy block for the server
 proxy.ts      the gate: no valid session cookie, no app
 lib/
+  config.ts   every deployment value, read from .env (server-only)
   schema.sql  the whole data model
   db.ts       lazy SQLite connection + helpers
   auth.ts     accounts, password hashing, sessions
@@ -132,13 +178,18 @@ lib/
   actions.ts  every write, as server actions
   quickadd.ts the quick-add parser — kept, but nothing in the UI calls it
   markdown.ts note renderer + templates
-scripts/      seed.mjs, smoke-test.cjs, browser-test.mjs
+  content/    rules.ts (the voice, as data), lint.ts (the 15 checks), corpus.ts,
+              prompt.ts, provider.ts (OpenAI-compatible client), generate.ts,
+              extract.ts (.docx/.pdf → text), analyze.ts (document → brief)
+scripts/      seed.mjs, smoke-test.cjs, browser-test.mjs, import-posts.mjs,
+              lint-corpus.cjs, test-generate.cjs, test-document.cjs
 ```
 
 ## Not built yet
 
-Google Calendar sync, collaboration, a native mobile app, notifications, AI
-assistance. Touch drag-and-drop is not implemented either — on a phone, use the
-click-to-plan and task fields instead.
+Google Calendar sync, collaboration, a native mobile app, notifications. Touch
+drag-and-drop is not implemented either — on a phone, use the click-to-plan and
+task fields instead. AI is limited to the Content page and stays opt-in: nothing
+calls out until you set a provider in Settings.
 The first thing worth proving is whether this actually turns strategy into daily
 action; everything else can wait for that answer.

@@ -1,6 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireUser } from "./auth";
+import { clubConfig } from "./config";
+import { analyzeDocument, type AnalyzeResult } from "./content/analyze";
+import { generatePost, type GenerateResult } from "./content/generate";
+import { lintPost } from "./content/lint";
+import type { Brief } from "./content/prompt";
 import { all, get, run, tx } from "./db";
 import { getGoal, listNotes, listTasks, searchAll, type SearchHit } from "./queries";
 import { TASK_STATUSES, type Note, type Task, type TaskStatus } from "./types";
@@ -1054,5 +1060,77 @@ export async function updateSettings(values: Record<string, string>) {
       value,
     );
   }
+  touch();
+}
+
+/* ------------------------------------------------------------------- content */
+
+/* These four reach a paid endpoint and write to the drafts table, so unlike the
+   reads above they check the session themselves rather than trusting the proxy —
+   a server function is a POST to its own route, not a page render. */
+
+export async function generateContent(
+  brief: Brief,
+): Promise<{ ok: true; result: GenerateResult } | { ok: false; error: string }> {
+  await requireUser();
+  try {
+    return { ok: true, result: await generatePost(brief) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function readBriefFromDocument(
+  form: FormData,
+): Promise<{ ok: true; result: AnalyzeResult } | { ok: false; error: string }> {
+  await requireUser();
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Chưa chọn file." };
+  }
+  try {
+    return { ok: true, result: await analyzeDocument(file) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function saveDraft(input: {
+  id?: string;
+  category: string;
+  topic: string;
+  brief: Record<string, string>;
+  content: string;
+  model?: string | null;
+}): Promise<string> {
+  await requireUser();
+  const lint = lintPost(input.content, { footerMarker: clubConfig().footerMarker });
+  const now = nowISO();
+  const id = input.id ?? newId();
+  run(
+    `INSERT INTO content_drafts(id, category, topic, brief, content, score, lint, model, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       category = excluded.category, topic = excluded.topic, brief = excluded.brief,
+       content = excluded.content, score = excluded.score, lint = excluded.lint,
+       model = excluded.model, updated_at = excluded.updated_at`,
+    id,
+    input.category,
+    input.topic,
+    JSON.stringify(input.brief),
+    input.content,
+    lint.score,
+    JSON.stringify(lint.checks.filter((c) => !c.ok)),
+    input.model ?? null,
+    now,
+    now,
+  );
+  touch();
+  return id;
+}
+
+export async function deleteDraft(id: string): Promise<void> {
+  await requireUser();
+  run("DELETE FROM content_drafts WHERE id = ?", id);
   touch();
 }

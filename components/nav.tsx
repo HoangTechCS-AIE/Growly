@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   IconCalendar, IconLayers, IconMore, IconNote, IconReview, IconSettings,
-  IconTarget, IconTask, IconToday, IconWarning, IconX,
+  IconSparkle, IconTarget, IconTask, IconToday, IconWarning, IconX,
 } from "./icons";
 import { cn } from "@/lib/util";
 
@@ -16,7 +16,9 @@ export interface NavCounts {
 }
 
 type NavItem = {
-  href: "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/strategy" | "/review" | "/settings";
+  href:
+    | "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/strategy" | "/review"
+    | "/content" | "/settings";
   label: string;
   Icon: (props: { className?: string }) => React.ReactElement;
   badge?: "today" | "inbox";
@@ -30,6 +32,7 @@ const NAV: NavItem[] = [
   { href: "/projects", label: "Projects", Icon: IconTarget },
   { href: "/strategy", label: "Strategy", Icon: IconLayers },
   { href: "/review", label: "Review", Icon: IconReview },
+  { href: "/content", label: "Content", Icon: IconSparkle },
 ];
 
 /* The phone gets four tabs plus "More" for the rest. */

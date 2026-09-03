@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — real values stay local, the template is committed
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -40,11 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Growly local database — including the .sqlite snapshots taken before migrations
-data/*.db
-data/*.db-*
-data/*.sqlite
-data/*.backup*
-data/.session-key
+# Growly local data: the SQLite file, the session key, and the crawled fanpage
+# archive. All local-first by design, and the archive runs to gigabytes of media.
+/data/
 
 .smoke/

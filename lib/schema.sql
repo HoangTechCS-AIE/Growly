@@ -335,3 +335,40 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+
+/* ----------------------------------------------------------------- content */
+
+/* The crawled fanpage archive, flattened. One row per real post — the corpus
+   the generator draws few-shot examples from and the rules were measured on. */
+CREATE TABLE IF NOT EXISTS fb_posts (
+  id TEXT PRIMARY KEY,
+  created_time TEXT NOT NULL,
+  date TEXT NOT NULL,
+  type TEXT,
+  status_type TEXT,
+  category TEXT NOT NULL DEFAULT 'khac',
+  message TEXT NOT NULL,
+  char_count INTEGER NOT NULL DEFAULT 0,
+  emoji_count INTEGER NOT NULL DEFAULT 0,
+  media_count INTEGER NOT NULL DEFAULT 0,
+  permalink_url TEXT,
+  imported_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fb_posts_date     ON fb_posts(date);
+CREATE INDEX IF NOT EXISTS idx_fb_posts_category ON fb_posts(category);
+
+/* A generated post kept for later. `lint` holds only the failing checks — the
+   passing ones are recomputed from `content` whenever the draft is opened. */
+CREATE TABLE IF NOT EXISTS content_drafts (
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  topic TEXT NOT NULL,
+  brief TEXT NOT NULL DEFAULT '{}',
+  content TEXT NOT NULL,
+  score INTEGER NOT NULL DEFAULT 0,
+  lint TEXT NOT NULL DEFAULT '[]',
+  model TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_content_drafts_created ON content_drafts(created_at);

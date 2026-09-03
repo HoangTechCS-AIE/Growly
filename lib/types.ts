@@ -293,3 +293,16 @@ export interface ReviewRecord {
   created_at: string;
   updated_at: string;
 }
+
+export interface ContentDraft {
+  id: string;
+  category: string;
+  topic: string;
+  brief: string;
+  content: string;
+  score: number;
+  lint: string;
+  model: string | null;
+  created_at: string;
+  updated_at: string;
+}

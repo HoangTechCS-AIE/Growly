@@ -1,8 +1,10 @@
+import { AiSettingsForm } from "@/components/ai-settings-form";
 import { SettingsForm } from "@/components/settings-form";
 import { PageHeader, Tile } from "@/components/ui";
 import { getSettings, listAreas, listTags } from "@/lib/queries";
 import { requireUser } from "@/lib/auth";
 import { signOut } from "@/lib/auth-actions";
+import { getPublicProviderConfig } from "@/lib/content/provider";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +13,13 @@ export default async function SettingsPage() {
   const settings = getSettings();
   const areas = listAreas();
   const tags = listTags();
+  const provider = getPublicProviderConfig();
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader title="Settings" subtitle="Everything is stored locally in data/growly.db" />
       <SettingsForm settings={settings} areas={areas} />
+      <AiSettingsForm config={provider} />
 
       <Tile title="Account" hint="The login that opens Growly" className="mt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
