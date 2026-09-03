@@ -32,7 +32,14 @@ export default async function NotesPage({ searchParams }: PageProps<"/notes">) {
   const tag = pick("tag");
   const archived = pick("archived") === "1";
 
-  const notes = listNotes({ kind, search: q, tagId: tag, includeArchived: archived });
+  // Only top-level pages get a card; children live inside their parent. A search still spans every page.
+  const notes = listNotes({
+    kind,
+    search: q,
+    tagId: tag,
+    includeArchived: archived,
+    parentId: q ? undefined : null,
+  });
   const tags = listTags();
 
   const kinds = [

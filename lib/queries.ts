@@ -362,6 +362,8 @@ const NOTE_SELECT = `
 
 export interface NoteFilter {
   kind?: string;
+  /** `null` keeps only top-level pages; an id keeps only that page's children. */
+  parentId?: string | null;
   search?: string;
   tagId?: string;
   projectId?: string;
@@ -379,6 +381,11 @@ export function listNotes(f: NoteFilter = {}): NoteView[] {
   if (f.kind) {
     where.push("n.kind = ?");
     params.push(f.kind);
+  }
+  if (f.parentId === null) where.push("n.parent_id IS NULL");
+  else if (f.parentId) {
+    where.push("n.parent_id = ?");
+    params.push(f.parentId);
   }
   if (f.search) {
     where.push("(n.title LIKE ? OR n.content LIKE ?)");
