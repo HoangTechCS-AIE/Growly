@@ -49,16 +49,20 @@ export function MonthGrid({
   }
 
   return (
-    <div className="tile gap-0 overflow-x-auto p-0">
-      <div className="min-w-[720px]">
-        <div className="grid grid-cols-7 border-b border-line">
+    <div className="tile flex min-h-0 flex-1 flex-col gap-0 overflow-hidden p-0">
+      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="flex h-full min-h-[560px] min-w-[720px] flex-col">
+        <div className="grid shrink-0 grid-cols-7 border-b border-line">
           {headers.map((day) => (
             <div key={day} className="px-3 py-2 text-xs font-bold uppercase tracking-[0.04em] text-muted">
               {day}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7">
+        <div
+          className="grid min-h-0 flex-1 grid-cols-7"
+          style={{ gridTemplateRows: `repeat(${Math.ceil(cells.length / 7)}, minmax(116px, 1fr))` }}
+        >
           {cells.map((date) => {
             const inMonth = date.slice(0, 7) === month;
             const dayTasks = tasks.filter((t) => t.scheduled_date === date);
@@ -76,7 +80,7 @@ export function MonthGrid({
                 onDragLeave={() => setOver((d) => (d === date ? null : d))}
                 onDrop={(e) => drop(date, e)}
                 className={cn(
-                  "min-h-[116px] border-r border-b border-line p-2 transition [&:nth-child(7n)]:border-r-0",
+                  "min-h-[116px] overflow-hidden border-r border-b border-line p-2 transition [&:nth-child(7n)]:border-r-0",
                   !inMonth && "bg-surface-2/60",
                   over === date && "bg-accent/5 ring-2 ring-accent/40 ring-inset",
                 )}
@@ -156,6 +160,7 @@ export function MonthGrid({
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

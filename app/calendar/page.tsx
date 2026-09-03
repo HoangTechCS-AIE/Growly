@@ -59,18 +59,18 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         : `${formatDate(from)} — ${formatDate(to)}`;
 
   return (
-    <div className="mx-auto max-w-[1700px]">
+    <div className="flex flex-col gap-3 lg:-mb-8 lg:h-[calc(100dvh-72px)]">
       <Suspense fallback={null}>
         <MobileDefaultsToDay />
       </Suspense>
       {/* No page-sized heading: the grid is the page. The range still needs a
           label, though — month view has nowhere else that names its month. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h1 className="text-base font-bold tracking-tight text-ink">{title}</h1>
         <CalendarNav view={view} date={anchor} />
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
         {unscheduled.length > 0 && <UnscheduledStrip tasks={unscheduled} />}
 
         {view === "month" ? (

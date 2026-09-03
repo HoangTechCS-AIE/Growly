@@ -126,13 +126,12 @@ export function DayWeekGrid({
   }
 
   return (
-    <div className="tile gap-0 overflow-hidden p-0">
-      <div className={cn("overflow-x-auto", !single && "min-w-0")}>
+    <div className="tile flex min-h-0 flex-1 flex-col gap-0 overflow-hidden p-0">
+      <div
+        ref={scrollRef}
+        className="min-h-[420px] max-h-[calc(100dvh-300px)] min-w-0 flex-1 overflow-auto lg:max-h-none lg:min-h-0"
+      >
         <div className={cn(!single && "min-w-[760px]")}>
-          <div
-            ref={scrollRef}
-            className="max-h-[calc(100dvh-260px)] min-h-[420px] overflow-y-auto"
-          >
           <div className="sticky top-0 z-[3] bg-surface">
           <div className="flex border-b border-line">
             <div className="w-14 shrink-0 border-r border-line" />
@@ -310,14 +309,8 @@ export function DayWeekGrid({
                 );
               })}
             </div>
-          </div>
         </div>
       </div>
-      <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
-        Click an empty slot to plan something there. Drag a block to move it, its bottom edge to
-        change how long it takes, or drop it on the <b className="font-semibold">No time</b> row to
-        keep the day without committing to an hour.
-      </p>
     </div>
   );
 }
