@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { resizeTask, scheduleTask } from "@/lib/actions";
@@ -43,11 +43,24 @@ export function DayWeekGrid({
   const single = dates.length === 1;
 
   const total = Math.max(60, dayEnd - dayStart);
-  const height = total * PX_PER_MIN;
   const hours = Array.from(
-    { length: Math.floor(total / 60) + 1 },
+    { length: Math.ceil(total / 60) },
     (_, i) => Math.floor(dayStart / 60) + i,
   );
+  const height = hours.length * 60 * PX_PER_MIN;
+
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const firstDate = dates[0];
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const now = new Date();
+    const focus = dates.includes(today) ? now.getHours() * 60 + now.getMinutes() : 8 * 60;
+    el.scrollTop = Math.max(0, (focus - dayStart) * PX_PER_MIN - el.clientHeight / 3);
+    // Re-running on every render would yank the view back mid-scroll, so this
+    // deliberately keys off the range rather than the `dates` array identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstDate, dates.length, today, dayStart]);
 
   function minutesFromY(date: string, clientY: number) {
     const rect = columnRefs.current[date]?.getBoundingClientRect();
@@ -116,6 +129,11 @@ export function DayWeekGrid({
     <div className="tile gap-0 overflow-hidden p-0">
       <div className={cn("overflow-x-auto", !single && "min-w-0")}>
         <div className={cn(!single && "min-w-[760px]")}>
+          <div
+            ref={scrollRef}
+            className="max-h-[calc(100dvh-260px)] min-h-[420px] overflow-y-auto"
+          >
+          <div className="sticky top-0 z-[3] bg-surface">
           <div className="flex border-b border-line">
             <div className="w-14 shrink-0 border-r border-line" />
             {dates.map((date) => {
@@ -127,6 +145,7 @@ export function DayWeekGrid({
               return (
                 <div
                   key={date}
+                  data-day-header={date}
                   className={cn(
                     "min-w-0 flex-1 border-r border-line px-2 py-2.5 last:border-r-0",
                     isToday && "bg-accent/5",
@@ -207,7 +226,8 @@ export function DayWeekGrid({
             })}
           </div>
 
-          <div className="max-h-[calc(100dvh-260px)] min-h-[420px] overflow-y-auto">
+          </div>
+
             <div className="flex" style={{ height }}>
               <div className="w-14 shrink-0 border-r border-line">
                 {hours.map((hour) => (
