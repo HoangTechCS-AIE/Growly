@@ -12,6 +12,7 @@ import {
 } from "@/lib/queries";
 import type { TaskStatus, TaskView } from "@/lib/types";
 import { addDaysISO, startOfWeekISO, todayISO } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ function groupByDate(tasks: TaskView[], today: string) {
 }
 
 export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
+  await requireUser();
   const params = await searchParams;
   const single = (key: string) => {
     const value = params[key];

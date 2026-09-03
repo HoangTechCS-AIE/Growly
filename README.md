@@ -25,9 +25,14 @@ npm run seed     # optional: a worked example (vision → goal → sprint → pr
 npm run dev      # http://localhost:3000
 ```
 
+The first visit opens a setup screen: pick the username and password that will
+open Growly from then on. One account guards the whole app — there is no sharing
+and no per-user data. Sign out again from Settings.
+
 Everything lives in `data/growly.db` (SQLite through Node's built-in `node:sqlite`,
 so there is no native build step). Nothing leaves the machine — back it up by
-copying that file.
+copying that file. Beside it sits `data/.session-key`, the key that signs session
+cookies; delete it to sign every browser out, or set `GROWLY_SECRET` instead.
 
 ```bash
 npm run build && npm start   # production mode
@@ -117,9 +122,12 @@ something there, or set the day, time and status on the task itself.
 app/          routes: today (/), tasks, calendar, notes, projects, strategy, review, settings
 components/   UI — client components own interaction, pages stay server components
 deploy/       compose file, remote deploy script and Caddy block for the server
+proxy.ts      the gate: no valid session cookie, no app
 lib/
   schema.sql  the whole data model
   db.ts       lazy SQLite connection + helpers
+  auth.ts     accounts, password hashing, sessions
+  auth-token.ts  signs and reads the session cookie (also used by proxy.ts)
   queries.ts  every read (goal inheritance, alignment, capacity, drift)
   actions.ts  every write, as server actions
   quickadd.ts the quick-add parser — kept, but nothing in the UI calls it

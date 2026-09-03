@@ -10,10 +10,12 @@ import {
   formatDate, formatDateLong, monthGrid, monthName, startOfMonthISO, startOfWeekISO,
   todayISO, weekDates,
 } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function CalendarPage({ searchParams }: PageProps<"/calendar">) {
+  await requireUser();
   const params = await searchParams;
   const pick = (key: string) => {
     const value = params[key];

@@ -3,10 +3,12 @@ import { IconChevronLeft } from "@/components/icons";
 import { TaskForm } from "@/components/task-form";
 import { PageHeader } from "@/components/ui";
 import { listAreas, listProjects } from "@/lib/queries";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewTaskPage({ searchParams }: PageProps<"/tasks/new">) {
+  await requireUser();
   const params = await searchParams;
   const single = (key: string) => {
     const value = params[key];

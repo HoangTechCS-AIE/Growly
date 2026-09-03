@@ -11,10 +11,12 @@ import {
   addDaysISO, cn, formatClock, formatDateLong, formatDuration, pct, relativeDay,
   startOfWeekISO, todayISO, weekDates,
 } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function TodayPage() {
+export default async function TodayPage() {
+  await requireUser();
   const today = todayISO();
   const clock = new Date();
   const nowMin = clock.getHours() * 60 + clock.getMinutes();

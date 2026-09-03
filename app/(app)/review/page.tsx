@@ -11,6 +11,7 @@ import {
   addDaysISO, endOfMonthISO, formatDate, formatDateLong, formatDuration, monthKey, monthName,
   pct, startOfMonthISO, startOfWeekISO, todayISO, weekKey,
 } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ const FIELDS = {
 } as const;
 
 export default async function ReviewPage({ searchParams }: PageProps<"/review">) {
+  await requireUser();
   const params = await searchParams;
   const pick = (key: string) => {
     const value = params[key];

@@ -45,5 +45,6 @@ data/*.db
 data/*.db-*
 data/*.sqlite
 data/*.backup*
+data/.session-key
 
 .smoke/

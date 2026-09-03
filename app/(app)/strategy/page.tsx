@@ -9,10 +9,12 @@ import {
 } from "@/lib/queries";
 import type { GoalView } from "@/lib/types";
 import { cn, pct, addDaysISO, dotTone, formatDate, formatDuration, relativeDay, startOfWeekISO, todayISO } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default function StrategyPage() {
+export default async function StrategyPage() {
+  await requireUser();
   const today = todayISO();
   const settings = getSettings();
   const weekStart = startOfWeekISO(today, settings.week_starts_on);

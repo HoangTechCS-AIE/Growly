@@ -5,6 +5,9 @@
  * the mobile More sheet, the
  * theme toggle and colour contrast.
  *
+ * It signs itself in first — on a throwaway database that means creating the
+ * account the setup screen asks for.
+ *
  * It needs Chrome and puppeteer-core, and a server pointed at a throwaway
  * database so your real one is never touched:
  *
@@ -47,6 +50,23 @@ function watch(page) {
 console.log("\nGrowly browser test\n\nInteractions");
 
 const page = watch(await browser.newPage());
+
+/* ---------------------------------------------------------------- sign in -- */
+// Every route sits behind the login. A throwaway database has no account yet,
+// so the first visit sets one; a re-used database just signs in.
+const ACCOUNT = { username: "uitest", password: "growly-uitest" };
+await page.goto(BASE, { waitUntil: "networkidle2" });
+if (!new URL(page.url()).pathname.startsWith("/tasks")) {
+  const onSetup = page.url().includes("/setup");
+  await page.type("#username", ACCOUNT.username);
+  await page.type("#password", ACCOUNT.password);
+  if (onSetup) await page.type("#confirm", ACCOUNT.password);
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle2" }),
+    page.click('button[type="submit"]'),
+  ]);
+}
+expect(new URL(page.url()).pathname === "/", "signing in opens the app");
 
 /* ---------------------------------------------------------- create a task -- */
 // Quick add is gone; the New task form is the way in now.

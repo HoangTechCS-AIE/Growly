@@ -4,10 +4,12 @@ import { IconChevronLeft } from "@/components/icons";
 import { ProjectHeader, ProjectNotes, ProjectTasks } from "@/components/project-panels";
 import { getProject, listNotes, listTasks } from "@/lib/queries";
 import { todayISO } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
+  await requireUser();
   const { id } = await params;
   const project = getProject(id);
   if (!project) notFound();

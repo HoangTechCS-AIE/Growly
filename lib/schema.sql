@@ -316,3 +316,22 @@ END;
 CREATE TRIGGER IF NOT EXISTS goals_search_ad AFTER DELETE ON goals BEGIN
   DELETE FROM search_index WHERE kind = 'goal' AND ref_id = old.id;
 END;
+
+/* One account guards the whole app; the data itself is not split per user. */
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  username      TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+
+/* A row per signed-in browser. The cookie carries the id and a signature, so
+   deleting the row here ends that session everywhere. */
+CREATE TABLE IF NOT EXISTS sessions (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
