@@ -8,6 +8,7 @@ import type {
 import { SNIPPET_CLOSE, SNIPPET_OPEN, STATUS_LABEL } from "./types";
 export type { SearchHit, SearchKind } from "./types";
 import { addDaysISO, todayISO } from "./util";
+import { normalizeAccent } from "./accents";
 
 /* ------------------------------------------------------------------ settings */
 
@@ -19,6 +20,7 @@ export function getSettings(): Settings {
     day_end_min: Number(map.day_end_min ?? 1320),
     daily_capacity_min: Number(map.daily_capacity_min ?? 360),
     week_starts_on: Number(map.week_starts_on ?? 1),
+    accent: normalizeAccent(map.accent),
   };
 }
 

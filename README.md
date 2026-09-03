@@ -86,8 +86,13 @@ inline SVGs; there are no emoji or text glyphs standing in for controls.
 **Light and dark.** The palette follows the system by default; the toggle in the
 header cycles system → light → dark and remembers the choice. A tiny inline
 script applies it before the first paint, so there is no flash. Every colour is
-a role (`--ink`, `--muted`, `--accent`, `--surface`…) defined once per theme;
-project and area colours are hues that derive their chip, dot, tile and
+a role (`--ink`, `--muted`, `--accent`, `--surface`…) defined once per theme.
+**Settings → Accent** swaps the accent for one of six presets — green, blue,
+violet, amber, rose, slate — stamped on `<html>` by the server, so it is right
+on the first paint too. Each preset states its own light and dark values and
+every accent/label pair clears WCAG AA, which is why it is a fixed list rather
+than a free colour picker. Project and area colours are unaffected: they are
+hues that derive their chip, dot, tile and
 calendar-block styles through `color-mix`, so a new colour needs no per-theme
 classes. Every text pair clears WCAG AA and the `browser-test` script measures it.
 

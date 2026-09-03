@@ -6,7 +6,8 @@ import { createArea, deleteArea, updateSettings } from "@/lib/actions";
 import type { Area, Settings } from "@/lib/types";
 import { cn, COLORS, dotTone, formatClock, formatDuration } from "@/lib/util";
 import { Tile } from "./ui";
-import { IconPlus, IconX } from "./icons";
+import { IconCheck, IconPlus, IconX } from "./icons";
+import { ACCENTS } from "@/lib/accents";
 
 export function SettingsForm({ settings, areas }: { settings: Settings; areas: Area[] }) {
   const router = useRouter();
@@ -19,6 +20,19 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
     week_starts_on: String(settings.week_starts_on),
   });
   const [area, setArea] = useState({ name: "", color: "indigo" });
+  const [accent, setAccent] = useState(settings.accent);
+
+  /* Applied on click rather than on Save: picking a colour you cannot see is
+     no choice at all. The attribute is set here too so the change lands before
+     the server round-trip returns. */
+  function pickAccent(id: string) {
+    setAccent(id);
+    document.documentElement.dataset.accent = id;
+    startTransition(async () => {
+      await updateSettings({ accent: id });
+      router.refresh();
+    });
+  }
 
   const toMinutes = (value: string) =>
     Number(value.split(":")[0]) * 60 + Number(value.split(":")[1] ?? 0);
@@ -95,6 +109,38 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
           </button>
           {saved && <span className="tag tag-accent">Saved</span>}
         </div>
+      </Tile>
+
+      <Tile title="Accent" hint="The colour of buttons, the active tab, today's marker and the now-line">
+        <div className="flex flex-wrap gap-2">
+          {ACCENTS.map((option) => {
+            const on = accent === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => pickAccent(option.id)}
+                aria-pressed={on}
+                className={cn(
+                  "flex h-11 items-center gap-2.5 rounded-full border px-3.5 text-sm font-semibold transition",
+                  on ? "border-ink bg-surface-2" : "border-line hover:border-line-strong",
+                )}
+              >
+                <span
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white"
+                  style={{ background: option.swatch }}
+                >
+                  {on && <IconCheck className="h-3.5 w-3.5" strokeWidth={3} />}
+                </span>
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted">
+          Each one is checked against its label colour for WCAG AA in light and dark, which is why
+          the list is fixed rather than a free colour picker.
+        </p>
       </Tile>
 
       <Tile title="Life areas" hint="Work, Health, Learning — the buckets a goal or task belongs to">

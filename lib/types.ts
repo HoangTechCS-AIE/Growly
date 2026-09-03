@@ -281,6 +281,8 @@ export interface Settings {
   day_end_min: number;
   daily_capacity_min: number;
   week_starts_on: number;
+  /** One of the ids in lib/accents.ts. */
+  accent: string;
 }
 
 export interface ReviewRecord {

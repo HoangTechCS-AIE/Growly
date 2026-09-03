@@ -112,6 +112,107 @@
    (tile · inner · control) and the colour roles above. Components never
    invent a size. */
 
+
+/* ----------------------------------------------------------- accent presets --
+   Settings → Accent stamps data-accent on <html>, rendered on the server so it
+   never flashes. Green is the base above; each preset restates the four accent
+   roles for light and for both ways of being dark. Every accent/ink pair here
+   clears WCAG AA (4.5:1) — the swatches are not free-form for that reason. */
+:root[data-accent="blue"] {
+  --accent: #1f6fb2;
+  --accent-ink: #ffffff;
+  --accent-deep: #17527f;
+  --accent-deep-ink: #ffffff;
+}
+:root[data-accent="violet"] {
+  --accent: #6d4bc4;
+  --accent-ink: #ffffff;
+  --accent-deep: #4b3390;
+  --accent-deep-ink: #ffffff;
+}
+:root[data-accent="amber"] {
+  --accent: #a8630f;
+  --accent-ink: #ffffff;
+  --accent-deep: #7a460b;
+  --accent-deep-ink: #ffffff;
+}
+:root[data-accent="rose"] {
+  --accent: #c0466a;
+  --accent-ink: #ffffff;
+  --accent-deep: #8d2f4c;
+  --accent-deep-ink: #ffffff;
+}
+:root[data-accent="slate"] {
+  --accent: #3f4a55;
+  --accent-ink: #ffffff;
+  --accent-deep: #2a323a;
+  --accent-deep-ink: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-accent="blue"]:not([data-theme="light"]) {
+    --accent: #5db1ee;
+    --accent-ink: #06243c;
+    --accent-deep: #255580;
+    --accent-deep-ink: #eaf5ff;
+  }
+  :root[data-accent="violet"]:not([data-theme="light"]) {
+    --accent: #a68bf0;
+    --accent-ink: #1a1030;
+    --accent-deep: #4a3a80;
+    --accent-deep-ink: #f3efff;
+  }
+  :root[data-accent="amber"]:not([data-theme="light"]) {
+    --accent: #e8a94a;
+    --accent-ink: #2a1a04;
+    --accent-deep: #7a5216;
+    --accent-deep-ink: #fdf3e2;
+  }
+  :root[data-accent="rose"]:not([data-theme="light"]) {
+    --accent: #f087a5;
+    --accent-ink: #2e0d18;
+    --accent-deep: #8a3352;
+    --accent-deep-ink: #fdeff3;
+  }
+  :root[data-accent="slate"]:not([data-theme="light"]) {
+    --accent: #9fb0c0;
+    --accent-ink: #101820;
+    --accent-deep: #46545f;
+    --accent-deep-ink: #f0f4f8;
+  }
+}
+
+:root[data-theme="dark"][data-accent="blue"] {
+  --accent: #5db1ee;
+  --accent-ink: #06243c;
+  --accent-deep: #255580;
+  --accent-deep-ink: #eaf5ff;
+}
+:root[data-theme="dark"][data-accent="violet"] {
+  --accent: #a68bf0;
+  --accent-ink: #1a1030;
+  --accent-deep: #4a3a80;
+  --accent-deep-ink: #f3efff;
+}
+:root[data-theme="dark"][data-accent="amber"] {
+  --accent: #e8a94a;
+  --accent-ink: #2a1a04;
+  --accent-deep: #7a5216;
+  --accent-deep-ink: #fdf3e2;
+}
+:root[data-theme="dark"][data-accent="rose"] {
+  --accent: #f087a5;
+  --accent-ink: #2e0d18;
+  --accent-deep: #8a3352;
+  --accent-deep-ink: #fdeff3;
+}
+:root[data-theme="dark"][data-accent="slate"] {
+  --accent: #9fb0c0;
+  --accent-ink: #101820;
+  --accent-deep: #46545f;
+  --accent-deep-ink: #f0f4f8;
+}
+
 @theme inline {
   --color-canvas: var(--canvas);
   --color-surface: var(--surface);

@@ -4,7 +4,7 @@ import "./globals.css";
 import { BottomNav, Rail } from "@/components/nav";
 import { Topbar } from "@/components/topbar";
 import { THEME_SCRIPT } from "@/components/theme-toggle";
-import { listTasks } from "@/lib/queries";
+import { getSettings, listTasks } from "@/lib/queries";
 import { todayISO } from "@/lib/util";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -39,9 +39,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     overdue: listTasks({ dueBefore: today, parentId: null }, today).length,
   };
 
+  const { accent } = getSettings();
+
   return (
     <html
       lang="en"
+      // Chosen in Settings and rendered here, so the accent is right on the
+      // first paint the way the theme is.
+      data-accent={accent}
       className={`${jakarta.variable} ${geistMono.variable} h-full`}
       // The pre-paint script stamps data-theme before React hydrates.
       suppressHydrationWarning

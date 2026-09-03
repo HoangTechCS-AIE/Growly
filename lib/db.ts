@@ -11,6 +11,7 @@ const SCHEMA = fs.readFileSync(path.join(process.cwd(), "lib", "schema.sql"), "u
 const DEFAULT_SETTINGS: Record<string, string> = {
   // The grid runs the whole day; narrow it in Settings if you'd rather not see
   // the small hours. 1439 rather than 1440 so it round-trips an <input type="time">.
+  accent: "green",
   day_start_min: "0",
   day_end_min: "1439",
   daily_capacity_min: "360",
