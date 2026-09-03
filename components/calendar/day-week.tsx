@@ -279,7 +279,7 @@ export function DayWeekGrid({
                             e.dataTransfer.effectAllowed = "move";
                           }}
                           className={cn(
-                            "group absolute left-1 right-1 z-[2] overflow-hidden rounded-[10px] border px-2.5 py-1.5 text-xs transition",
+                            "group absolute left-1 right-1 z-[1] overflow-hidden rounded-[10px] border px-2.5 py-1.5 text-xs transition",
                             blockTone(task.project_color),
                             task.status === "done" && "opacity-60 line-through",
                           )}
@@ -321,10 +321,11 @@ function NowLine({ dayStart, total }: { dayStart: number; total: number }) {
   if (minutes < dayStart || minutes > dayStart + total) return null;
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 z-[1] border-t-2 border-accent"
+      className="pointer-events-none absolute inset-x-0 z-[2] border-t-2 border-accent
+        shadow-[0_1px_0_var(--surface),0_-1px_0_var(--surface)]"
       style={{ top: (minutes - dayStart) * PX_PER_MIN }}
     >
-      <span className="absolute -top-[5px] -left-1 h-2.5 w-2.5 rounded-full bg-accent" />
+      <span className="absolute -top-[5px] -left-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-surface" />
     </div>
   );
 }
