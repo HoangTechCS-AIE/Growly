@@ -7,13 +7,15 @@ import { resizeTask, scheduleTask } from "@/lib/actions";
 import type { Milestone, TaskView } from "@/lib/types";
 import { cn, blockTone, dayName, formatClock, formatDuration, fromISODate } from "@/lib/util";
 import { IconDiamond, IconFlag, IconWarning } from "../icons";
+import { DraggableChip } from "./chip";
 
-const PX_PER_MIN = 0.85;
+const PX_PER_MIN = 1;
 const SNAP = 15;
 
 export function DayWeekGrid({
   dates,
   tasks,
+  untimed,
   deadlines,
   milestones,
   dayStart,
@@ -24,6 +26,8 @@ export function DayWeekGrid({
 }: {
   dates: string[];
   tasks: TaskView[];
+  /** Assigned to a day but with no time block yet — they ride in the top row. */
+  untimed: TaskView[];
   deadlines: TaskView[];
   milestones: (Milestone & { project_title: string | null })[];
   dayStart: number;
@@ -59,6 +63,17 @@ export function DayWeekGrid({
     const minutes = minutesFromY(date, event.clientY);
     startTransition(async () => {
       await scheduleTask(id, date, minutes);
+      router.refresh();
+    });
+  }
+
+  function dropAllDay(date: string, event: React.DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = event.dataTransfer.getData("text/task-id");
+    if (!id) return;
+    startTransition(async () => {
+      await scheduleTask(id, date, null);
       router.refresh();
     });
   }
@@ -167,7 +182,32 @@ export function DayWeekGrid({
             })}
           </div>
 
-          <div className="max-h-[70vh] overflow-y-auto">
+          <div className="flex border-b border-line bg-surface-2/40">
+            <div className="flex w-14 shrink-0 items-center justify-end border-r border-line px-2 text-[10px] font-semibold whitespace-nowrap text-muted">
+              No time
+            </div>
+            {dates.map((date) => {
+              const items = untimed.filter((t) => t.scheduled_date === date);
+              return (
+                <div
+                  key={date}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => dropAllDay(date, e)}
+                  title="Drop a block here to keep the day but clear its time"
+                  className={cn(
+                    "flex min-h-[38px] min-w-0 flex-1 flex-col gap-1 border-r border-line p-1.5 last:border-r-0",
+                    date === today && "bg-accent/5",
+                  )}
+                >
+                  {items.map((task) => (
+                    <DraggableChip key={task.id} task={task} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="max-h-[calc(100dvh-260px)] min-h-[420px] overflow-y-auto">
             <div className="flex" style={{ height }}>
               <div className="w-14 shrink-0 border-r border-line">
                 {hours.map((hour) => (
@@ -262,8 +302,9 @@ export function DayWeekGrid({
         </div>
       </div>
       <p className="border-t border-line px-4 py-2.5 text-xs text-muted">
-        Drag a task from the rail onto a slot to block time, drag a block&apos;s bottom edge to
-        change its duration, or click an empty slot to plan something new there.
+        Click an empty slot to plan something there. Drag a block to move it, its bottom edge to
+        change how long it takes, or drop it on the <b className="font-semibold">No time</b> row to
+        keep the day without committing to an hour.
       </p>
     </div>
   );

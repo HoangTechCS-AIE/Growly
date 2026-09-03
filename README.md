@@ -54,10 +54,14 @@ estimate, logged time, recurrence and full history — and, once finished, the t
 closing questions: did the result match the expectation, did it move a goal, what
 is the next step.
 
-**Calendar** — day / week / month. Drag from the unscheduled rail onto the grid to
-block time, drag a block's bottom edge to change its duration. Deadlines and
-project milestones sit in the day header; each day shows planned time against your
-daily capacity and flags the days you have over-committed.
+**Calendar** — day / week / month, full width. A task with a day but no hour sits
+in the **No time** row under the day headers, where you can see it without
+scrolling and drag it down onto an hour; drop a block back up there to keep the
+day and drop the time. Drag a block's bottom edge to change its duration, or
+click an empty slot to plan something there. Deadlines and project milestones sit
+in the day header; each day shows planned time against your daily capacity and
+flags the days you have over-committed. Tasks with no day at all appear in a
+strip above the grid — and only when there are any.
 
 **Notes** — Markdown with live preview, `[[wiki links]]` and backlinks, daily
 notes, templates (weekly review, brainstorm, planning, meeting, project), pin, tag

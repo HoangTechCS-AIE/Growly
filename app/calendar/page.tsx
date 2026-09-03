@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import { CalendarNav, MobileDefaultsToDay } from "@/components/calendar/nav";
 import { DayWeekGrid } from "@/components/calendar/day-week";
 import { MonthGrid } from "@/components/calendar/month";
-import { DraggableChip } from "@/components/calendar/chip";
-import { UnscheduledRail } from "@/components/calendar/rail";
+import { UnscheduledStrip } from "@/components/calendar/rail";
 import { PageHeader } from "@/components/ui";
 import {
   capacityForRange, getSettings, listMilestones, listTasks,
@@ -46,6 +45,9 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
     { unscheduled: true, parentId: null, order: "t.important DESC, t.urgent DESC, t.created_at DESC" },
     today,
   );
+  // Scheduled for a day but with no hour committed yet. These used to sit in a
+  // tile below the grid, where a full-height week grid hid them entirely.
+  const untimed = scheduled.filter((t) => t.start_min == null && t.status !== "done");
   const plannedByDay = Object.fromEntries(
     capacityForRange(from, to).map((row) => [row.date, row.planned]),
   );
@@ -58,7 +60,7 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         : `${formatDate(from)} — ${formatDate(to)}`;
 
   return (
-    <div className="mx-auto max-w-[1500px]">
+    <div className="mx-auto max-w-[1700px]">
       <Suspense fallback={null}>
         <MobileDefaultsToDay />
       </Suspense>
@@ -68,72 +70,36 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
         actions={<CalendarNav view={view} date={anchor} />}
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          {view === "month" ? (
-            <MonthGrid
-              cells={dates}
-              anchor={startOfMonthISO(anchor)}
-              tasks={scheduled}
-              deadlines={deadlines}
-              milestones={milestones}
-              plannedByDay={plannedByDay}
-              capacity={settings.daily_capacity_min}
-              today={today}
-              weekStartsOn={settings.week_starts_on}
-            />
-          ) : (
-            <DayWeekGrid
-              dates={dates}
-              tasks={scheduled}
-              deadlines={deadlines}
-              milestones={milestones}
-              dayStart={settings.day_start_min}
-              dayEnd={settings.day_end_min}
-              capacity={settings.daily_capacity_min}
-              plannedByDay={plannedByDay}
-              today={today}
-            />
-          )}
+      <div className="flex flex-col gap-4">
+        {unscheduled.length > 0 && <UnscheduledStrip tasks={unscheduled} />}
 
-          {view !== "month" && <UnscheduledDayList dates={dates} tasks={scheduled} />}
-        </div>
-
-        <UnscheduledRail tasks={unscheduled} />
+        {view === "month" ? (
+          <MonthGrid
+            cells={dates}
+            anchor={startOfMonthISO(anchor)}
+            tasks={scheduled}
+            deadlines={deadlines}
+            milestones={milestones}
+            plannedByDay={plannedByDay}
+            capacity={settings.daily_capacity_min}
+            today={today}
+            weekStartsOn={settings.week_starts_on}
+          />
+        ) : (
+          <DayWeekGrid
+            dates={dates}
+            tasks={scheduled}
+            untimed={untimed}
+            deadlines={deadlines}
+            milestones={milestones}
+            dayStart={settings.day_start_min}
+            dayEnd={settings.day_end_min}
+            capacity={settings.daily_capacity_min}
+            plannedByDay={plannedByDay}
+            today={today}
+          />
+        )}
       </div>
-    </div>
-  );
-}
-
-/** Tasks assigned to a day but without a time block yet. */
-function UnscheduledDayList({
-  dates,
-  tasks,
-}: {
-  dates: string[];
-  tasks: Awaited<ReturnType<typeof listTasks>>;
-}) {
-  const untimed = tasks.filter((t) => t.start_min == null && t.status !== "done");
-  if (!untimed.length) return null;
-
-  return (
-    <div className="tile">
-      <p className="tile-title">All-day · no time block yet</p>
-      <div className="flex gap-2 overflow-x-auto">
-        {dates.map((date) => {
-          const items = untimed.filter((t) => t.scheduled_date === date);
-          if (dates.length > 1 && !items.length) return <div key={date} className="min-w-0 flex-1" />;
-          return (
-            <div key={date} className="flex min-w-0 flex-1 flex-col gap-1.5">
-              {dates.length > 1 && <span className="text-[11px] font-bold text-muted">{formatDate(date)}</span>}
-              {items.map((task) => (
-                <DraggableChip key={task.id} task={task} />
-              ))}
-            </div>
-          );
-        })}
-      </div>
-      <p className="text-xs text-muted">Drag these into the grid above to give them a time block.</p>
     </div>
   );
 }
