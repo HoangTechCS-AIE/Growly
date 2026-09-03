@@ -29,5 +29,13 @@ jobs:
       - name: Data-layer smoke test
         run: npm run test:flows
 
+      # Both drive a stub OpenAI-compatible server, so they never reach a real
+      # provider and need no key.
+      - name: Content pipeline
+        run: npm run test:content
+
+      - name: Document extraction
+        run: npm run test:document
+
       - name: Build
         run: npm run build

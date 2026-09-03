@@ -32,9 +32,12 @@ ENV NODE_ENV=production \
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-# Read at runtime by lib/db.ts, and by scripts/seed.mjs when seeding.
+# Read at runtime by lib/db.ts, and by the scripts when seeding or importing.
 COPY --from=builder /app/lib/schema.sql ./lib/schema.sql
 COPY --from=builder /app/scripts/seed.mjs ./scripts/seed.mjs
+# Loads the crawled fanpage archive into fb_posts, which the Content page needs
+# examples from. Only useful with the archive mounted under /app/data.
+COPY --from=builder /app/scripts/import-posts.mjs ./scripts/import-posts.mjs
 
 # The database is a file on a mounted volume; `node` is uid 1000 in this image.
 RUN mkdir -p /app/data && chown -R node:node /app/data

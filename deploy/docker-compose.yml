@@ -7,13 +7,22 @@ services:
     container_name: growly
     restart: unless-stopped
 
-    # No `ports:` on purpose. Growly has no login of its own, so it is never
-    # published to the host — the only way in is through Caddy, which asks for
-    # a password first. Adding a port here would put the whole database on the
-    # public internet.
+    # No `ports:` on purpose. Even with the app's own login in front, it is
+    # never published to the host — the only way in is through Caddy. Adding a
+    # port here would put the whole database on the public internet.
     environment:
       TZ: Asia/Ho_Chi_Minh
       GROWLY_DB: /app/data/growly.db
+
+    # Content reads its club identity and provider defaults from the
+    # environment (lib/config.ts). Those values — and the API key above all —
+    # can never live in this repository, so they come from a file kept only on
+    # the server: /opt/growly/.env, modelled on .env.example. Marked optional so
+    # a host that has not written one still deploys; Content simply shows its
+    # "not configured" screen until the file exists. Needs Compose v2.24+.
+    env_file:
+      - path: ./.env
+        required: false
 
     # The database is one SQLite file. Bind-mounted so a backup is `cp`.
     # The host directory must be owned by uid 1000 (the image's `node` user).
