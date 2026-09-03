@@ -148,7 +148,7 @@ export function DayWeekGrid({
                   data-day-header={date}
                   className={cn(
                     "min-w-0 flex-1 border-r border-line px-2 py-2.5 last:border-r-0",
-                    isToday && "bg-accent/5",
+                    !single && isToday && "bg-accent/5",
                   )}
                 >
                   <div className="flex items-center justify-between gap-1">
@@ -215,7 +215,7 @@ export function DayWeekGrid({
                   title="Drop a block here to keep the day but clear its time"
                   className={cn(
                     "flex min-h-[38px] min-w-0 flex-1 flex-col gap-1 border-r border-line p-1.5 last:border-r-0",
-                    date === today && "bg-accent/5",
+                    !single && date === today && "bg-accent/5",
                   )}
                 >
                   {items.map((task) => (
@@ -259,7 +259,7 @@ export function DayWeekGrid({
                     title="Click an empty slot to plan something there"
                     className={cn(
                       "relative min-w-0 flex-1 border-r border-line last:border-r-0",
-                      date === today && "bg-accent/5",
+                      !single && date === today && "bg-accent/5",
                     )}
                   >
                     {hours.map((hour) => (
