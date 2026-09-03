@@ -123,7 +123,7 @@ export default async function TasksPage({ searchParams }: PageProps<"/tasks">) {
             <Tile className="xl:col-span-2">
               <EmptyState
                 title="No tasks match these filters"
-                hint="Capture one with the quick-add bar above, or clear the filters."
+                hint="Add one from Tasks → New task, or clear the filters."
                 action={
                   <Link href="/tasks" className="btn btn-sm">
                     Clear filters

@@ -72,9 +72,6 @@ inherit the note's project and goal.
 (what was completed, what is still open, time per goal, alignment, drift), so the
 page is never blank, and answers are stored per period.
 
-**Search** — one box across tasks, notes, projects and goals. Press `/` or
-`⌘K` / `Ctrl+K` anywhere for the palette, which also quick-adds a task.
-
 ## Interface
 
 **Bento, not boxes-in-boxes.** Every screen is a grid of rounded tiles on a
@@ -97,84 +94,22 @@ classes. Every text pair clears WCAG AA and the `browser-test` script measures i
 **Phone and desktop.** From `lg` up an icon rail sits on the left; below it the
 app gets a bottom tab bar (Today, Tasks, Calendar, Notes, More — the More sheet
 holds Projects, Strategy, Review, Search and Settings; Escape closes it and
-focus returns to the button). The header collapses to one row plus a full-width
-quick add, the board turns into a snap-scrolling carousel, the calendar opens on
-the day view, and the week grid and timeline scroll horizontally instead of
+focus returns to the button). The header is one thin strip, the board turns into a
+snap-scrolling carousel, the calendar opens on the day view, and the week grid and timeline scroll horizontally instead of
 crushing their columns. No page scrolls sideways on a 390px screen.
 
 **Keyboard and pointer-free use.** One visible focus ring on everything
 focusable, a skip link, `aria-current` on the active nav item, accessible names
 on every icon-only button and unlabelled select, `aria-pressed` on view
-switchers, live regions for quick-add and autosave feedback, and
+switchers, live regions for autosave feedback, and
 `prefers-reduced-motion` honoured. Drag and drop is pointer-only by nature, so
 every drag has a non-drag equivalent: click an empty calendar slot to plan
 something there, or set the day, time and status on the task itself.
 
-## Quick-add syntax
-
-Type into the bar at the top of every page:
-
-```
-Draft hero copy @Landing ~Validate /Work #writing * today 14:00 45m
-```
-
-| Token | Meaning |
-|---|---|
-| `@name` | project (`@"two words"` for spaces) |
-| `~name` | goal |
-| `/name` | area (Work, Health, Learning…) |
-| `#tag` | tag, created if new |
-| `*` / `!` | important / urgent |
-| `today`, `tmr`, `fri`, `2026-08-20`, `20/8` | scheduled day |
-| `due:friday` | deadline |
-| `14:00` | start of the time block |
-| `45m`, `1h30` | estimate |
-| `every day` / `weekday` / `week` / `month` | repeat |
-
-An `@name` that matches nothing stays in the title instead of disappearing.
-
-## Deploying
-
-The app ships as a Docker image. That is not a preference: the whole data layer
-is `node:sqlite`, which needs Node 22.5+, and the box it runs on still has
-Node 12.
-
-`.github/workflows/ci.yml` typechecks, runs the data-layer smoke test and
-builds on every push. `.github/workflows/deploy.yml` runs on a push to `main`
-or a manual dispatch: it builds the image, pushes it to GHCR, then feeds
-`deploy/remote-deploy.sh` to the server over SSH, which pulls, restarts and
-waits for the container's healthcheck before reporting success.
-
-```
-deploy/docker-compose.yml    what runs on the server, copied to /opt/growly
-deploy/remote-deploy.sh      the pull-and-restart run over SSH
-deploy/Caddyfile.growly.example  the site block that fronts it
-```
-
-Three repository secrets drive it: `DEPLOY_HOST`, `DEPLOY_USER` and
-`DEPLOY_SSH_KEY` (a deploy-only keypair, not a personal one). The registry
-credential is the workflow's own `GITHUB_TOKEN`, passed to the server on stdin
-so it never lands in a process list.
-
-**The database is a file, and nothing else is.** `/opt/growly/data` is
-bind-mounted into the container, so a backup is `cp /opt/growly/data/growly.db`
-and a restore is putting the file back and restarting. The directory belongs to
-uid 1000 because the image runs as `node`, not root. Deploys replace the
-container and never touch that directory.
-
-**Growly has no login of its own**, so the container publishes no port. The only
-way in is the Caddy that already terminates TLS on the host, which asks for a
-username and password first. Do not add a `ports:` entry to the compose file —
-that would put the database on the public internet.
-
-The container runs on `TZ=Asia/Ho_Chi_Minh`. Every date in Growly is a local
-`YYYY-MM-DD` string, so a UTC container would call the first seven hours of
-each day "yesterday".
-
 ## Layout
 
 ```
-app/          routes: today (/), tasks, calendar, notes, strategy, review, search, settings
+app/          routes: today (/), tasks, calendar, notes, projects, strategy, review, settings
 components/   UI — client components own interaction, pages stay server components
 deploy/       compose file, remote deploy script and Caddy block for the server
 lib/
@@ -182,7 +117,7 @@ lib/
   db.ts       lazy SQLite connection + helpers
   queries.ts  every read (goal inheritance, alignment, capacity, drift)
   actions.ts  every write, as server actions
-  quickadd.ts the quick-add parser
+  quickadd.ts the quick-add parser — kept, but nothing in the UI calls it
   markdown.ts note renderer + templates
 scripts/      seed.mjs, smoke-test.cjs, browser-test.mjs
 ```

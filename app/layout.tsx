@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import { CommandPalette } from "@/components/command-palette";
 import { BottomNav, Rail } from "@/components/nav";
 import { Topbar } from "@/components/topbar";
 import { THEME_SCRIPT } from "@/components/theme-toggle";
-import { listAreas, listProjects, listTasks } from "@/lib/queries";
+import { listTasks } from "@/lib/queries";
 import { todayISO } from "@/lib/util";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -39,8 +38,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     today: listTasks({ scheduledOn: today, parentId: null }, today).length,
     overdue: listTasks({ dueBefore: today, parentId: null }, today).length,
   };
-  const areas = listAreas();
-  const projects = listProjects({ status: "active" });
 
   return (
     <html
@@ -61,7 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="flex min-h-screen">
           <Rail counts={counts} />
           <div className="flex min-w-0 flex-1 flex-col">
-            <Topbar areas={areas} projects={projects} />
+            <Topbar />
             <main
               id="main"
               className="min-w-0 flex-1 px-4 pt-2 pb-[calc(84px+env(safe-area-inset-bottom))] sm:px-6 lg:px-8 lg:pt-3 lg:pb-8"
@@ -71,7 +68,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </div>
         <BottomNav counts={counts} />
-        <CommandPalette />
       </body>
     </html>
   );

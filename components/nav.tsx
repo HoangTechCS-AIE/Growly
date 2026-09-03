@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  IconCalendar, IconLayers, IconMore, IconNote, IconReview, IconSearch, IconSettings,
+  IconCalendar, IconLayers, IconMore, IconNote, IconReview, IconSettings,
   IconTarget, IconTask, IconToday, IconWarning, IconX,
 } from "./icons";
 import { cn } from "@/lib/util";
@@ -16,7 +16,7 @@ export interface NavCounts {
 }
 
 type NavItem = {
-  href: "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/strategy" | "/review" | "/search" | "/settings";
+  href: "/" | "/tasks" | "/calendar" | "/notes" | "/projects" | "/strategy" | "/review" | "/settings";
   label: string;
   Icon: (props: { className?: string }) => React.ReactElement;
   badge?: "today" | "inbox";
@@ -36,7 +36,6 @@ const NAV: NavItem[] = [
 const TABS = NAV.slice(0, 4);
 const MORE: NavItem[] = [
   ...NAV.slice(4),
-  { href: "/search", label: "Search", Icon: IconSearch },
   { href: "/settings", label: "Settings", Icon: IconSettings },
 ];
 

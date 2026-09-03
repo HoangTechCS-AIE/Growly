@@ -3,7 +3,6 @@ import { CalendarNav, MobileDefaultsToDay } from "@/components/calendar/nav";
 import { DayWeekGrid } from "@/components/calendar/day-week";
 import { MonthGrid } from "@/components/calendar/month";
 import { UnscheduledStrip } from "@/components/calendar/rail";
-import { PageHeader } from "@/components/ui";
 import {
   capacityForRange, getSettings, listMilestones, listTasks,
 } from "@/lib/queries";
@@ -64,11 +63,12 @@ export default async function CalendarPage({ searchParams }: PageProps<"/calenda
       <Suspense fallback={null}>
         <MobileDefaultsToDay />
       </Suspense>
-      <PageHeader
-        eyebrow="Calendar"
-        title={title}
-        actions={<CalendarNav view={view} date={anchor} />}
-      />
+      {/* No page-sized heading: the grid is the page. The range still needs a
+          label, though — month view has nowhere else that names its month. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h1 className="text-base font-bold tracking-tight text-ink">{title}</h1>
+        <CalendarNav view={view} date={anchor} />
+      </div>
 
       <div className="flex flex-col gap-4">
         {unscheduled.length > 0 && <UnscheduledStrip tasks={unscheduled} />}

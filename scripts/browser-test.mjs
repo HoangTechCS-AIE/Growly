@@ -1,5 +1,5 @@
 /**
- * Browser checks — the parts a server-side test cannot reach: quick add,
+ * Browser checks — the parts a server-side test cannot reach: task creation,
  * completing a task, dragging on the board and on the calendar, the block note
  * editor (shortcuts, slash menu, IME input, sub-pages, undo, block selection),
  * the mobile More sheet, the
@@ -48,17 +48,23 @@ console.log("\nGrowly browser test\n\nInteractions");
 
 const page = watch(await browser.newPage());
 
-/* ------------------------------------------------------------- quick add -- */
-await page.goto(`${BASE}/tasks?view=list`, { waitUntil: "networkidle2" });
+/* ---------------------------------------------------------- create a task -- */
+// Quick add is gone; the New task form is the way in now.
+await page.goto(`${BASE}/tasks/new`, { waitUntil: "networkidle2" });
 const marker = `UITest-${Date.now()}`;
-await page.type("#quick-add", `${marker} @Landing #uitest * tomorrow 09:00 30m`);
-await page.keyboard.press("Enter");
+await page.type("#title", marker);
+await page.select("#project", await page.evaluate(() => {
+  const option = [...document.querySelectorAll("#project option")]
+    .find((o) => o.textContent.includes("Landing page"));
+  return option ? option.value : "";
+}));
+await page.click('button[type="submit"]');
 await wait(2500);
 
 await page.goto(`${BASE}/tasks?view=list`, { waitUntil: "networkidle2" });
 const listText = await page.evaluate(() => document.body.innerText);
-expect(listText.includes(marker), "quick add creates a task and it shows in the list");
-expect(listText.includes("Landing page"), "the quick-added task picked up its project");
+expect(listText.includes(marker), "the New task form creates a task and it shows in the list");
+expect(listText.includes("Landing page"), "the new task kept the project it was given");
 
 /* ------------------------------------------------------- complete a task -- */
 const toggled = await page.evaluate((m) => {
@@ -375,92 +381,6 @@ await wait(400);
 expect((await blockText()).length <= 1, "Backspace deletes the whole block selection");
 await undo();
 expect((await blockText()).includes("alpha"), "undo brings the whole selection back");
-
-/* --------------------------------------------- search and command palette -- */
-const openPalette = async () => {
-  await page.keyboard.down("Control");
-  await page.keyboard.press("KeyK");
-  await page.keyboard.up("Control");
-  await page.waitForSelector(".cp-panel", { timeout: 5000 });
-  await wait(250);
-};
-const paletteTitles = () =>
-  page.$$eval(".cp-item .cp-title", (n) => n.map((x) => x.textContent));
-
-// A page whose text only differs from the query by Vietnamese diacritics.
-await page.goto(`${BASE}/notes`, { waitUntil: "networkidle2" });
-await page.waitForSelector(".nt-header .nt-action", { timeout: 10000 });
-await page.click(".nt-header .nt-action");
-await page.waitForSelector(".nb-editor", { timeout: 10000 });
-await wait(600);
-await page.click(".np-title");
-await page.keyboard.down("Control");
-await page.keyboard.press("KeyA");
-await page.keyboard.up("Control");
-await page.keyboard.type("Kế hoạch tuần tới");
-await page.click(".nb-tail");
-await page.keyboard.type("Ưu tiên hoàn thiện trang đích và đo chuyển đổi");
-await wait(1800);
-
-await page.goto(BASE, { waitUntil: "networkidle2" });
-await openPalette();
-expect((await paletteTitles()).length > 0, "Ctrl+K opens the palette on recent pages");
-
-await page.keyboard.type("ke hoach");
-await wait(600);
-expect(
-  (await paletteTitles()).some((t) => t.includes("Kế hoạch tuần tới")),
-  "searching without accents finds an accented title",
-);
-
-// "đ" is a letter, not an accent, so the index keeps a folded copy for it.
-await page.keyboard.down("Control");
-await page.keyboard.press("KeyA");
-await page.keyboard.up("Control");
-await page.keyboard.type("chuyen doi");
-await wait(600);
-expect(
-  (await paletteTitles()).some((t) => t.includes("Kế hoạch tuần tới")),
-  "body text matches too, with đ folded to d",
-);
-expect((await page.$$(".cp-snippet mark")).length > 0, "matched words are highlighted");
-
-await page.keyboard.press("Enter");
-await wait(900);
-expect(page.url().includes("/notes/"), "Enter opens the highlighted result");
-
-await openPalette();
-await page.keyboard.type("landing");
-await wait(600);
-const paletteKinds = await page.$$eval(".cp-item .chip", (n) => n.map((x) => x.textContent));
-expect(
-  paletteKinds.includes("Project") && paletteKinds.includes("Task"),
-  `the palette spans tasks and projects (${[...new Set(paletteKinds)].join(", ")})`,
-);
-
-// Nothing found: the palette still captures what you typed, quick-add syntax and all.
-await page.keyboard.down("Control");
-await page.keyboard.press("KeyA");
-await page.keyboard.up("Control");
-await page.keyboard.type("Gọi cho khách hàng vào thứ sáu");
-await wait(700);
-expect(
-  (await paletteTitles()).some((t) => t.startsWith("Add task")),
-  "an unmatched query offers to capture it as a task",
-);
-await page.keyboard.press("ArrowUp");
-await wait(200);
-await page.keyboard.press("Enter");
-await wait(1800);
-
-await page.goto(`${BASE}/search?q=${encodeURIComponent("goi cho khach")}`, {
-  waitUntil: "networkidle2",
-});
-expect(
-  (await page.evaluate(() => document.body.innerText)).includes("Gọi cho khách hàng"),
-  "the captured task is findable without accents",
-);
-expect((await page.$$("mark")).length > 0, "the search page highlights matches");
 
 /* ------------------------------------------------------- embedded data -- */
 await page.goto(`${BASE}/notes`, { waitUntil: "networkidle2" });
