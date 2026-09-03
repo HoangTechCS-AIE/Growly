@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+.next
+.smoke
+data
+design-system
+*.md
+!README.md
+.env*
+Dockerfile
+.dockerignore

@@ -1,0 +1,35 @@
+# Production compose file. The deploy workflow copies this to /opt/growly on
+# the server and runs `docker compose pull && docker compose up -d` there.
+
+services:
+  growly:
+    image: ghcr.io/hoangtechcs-aie/growly:latest
+    container_name: growly
+    restart: unless-stopped
+
+    # No `ports:` on purpose. Growly has no login of its own, so it is never
+    # published to the host — the only way in is through Caddy, which asks for
+    # a password first. Adding a port here would put the whole database on the
+    # public internet.
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      GROWLY_DB: /app/data/growly.db
+
+    # The database is one SQLite file. Bind-mounted so a backup is `cp`.
+    # The host directory must be owned by uid 1000 (the image's `node` user).
+    volumes:
+      - ./data:/app/data
+
+    networks:
+      - proxy
+
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  # Created by the Supabase compose project, which is also what runs Caddy.
+  # Sharing it is how Caddy resolves `growly:3000` by name.
+  proxy:
+    external: true
+    name: supabase_default

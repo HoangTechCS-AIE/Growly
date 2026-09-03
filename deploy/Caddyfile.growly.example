@@ -1,0 +1,32 @@
+# The site block that fronts Growly, for reference. It lives on the server in
+# the Caddy that already terminates TLS there:
+#
+#   /root/supabase/docker/volumes/proxy/caddy/Caddyfile
+#
+# Growly has no login of its own, so this basic_auth is the only thing between
+# the public internet and the database. Generate the hash on the server with:
+#
+#   docker exec -it supabase-caddy caddy hash-password
+#
+# and paste it below — never commit a real hash to this public repository.
+
+growly.9router-hou.duckdns.org {
+    tls {
+        # HTTP-01: no DNS API credentials needed, port 80 is already open.
+        issuer acme {
+            disable_tlsalpn_challenge
+        }
+    }
+
+    basic_auth {
+        hoang $2a$14$REPLACE_WITH_YOUR_OWN_HASH
+    }
+
+    handle {
+        # `growly` resolves over the shared `supabase_default` network.
+        reverse_proxy growly:3000
+    }
+
+    header -server
+    encode gzip
+}
