@@ -341,81 +341,59 @@ export function NotePage({
           }}
         />
 
-        <div className="np-footer">
-          <section>
-            <h2 className="tile-title">Sub-pages</h2>
-            {subpages.length ? (
-              <ul className="np-links">
-                {subpages.map((child) => (
-                  <li key={child.id}>
-                    <Link href={`/notes/${child.id}`}>
-                      <span aria-hidden>{child.icon || <IconNote />}</span>
-                      {child.title || "Untitled"}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="np-empty">
-                No sub-pages.{" "}
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() =>
-                    startTransition(async () => {
-                      const id = await createChildNote(note.id);
-                      router.push(`/notes/${id}`);
-                    })
-                  }
-                >
-                  Add one
-                </button>
-                , or type <code>/page</code> in the editor.
-              </p>
+        {/* Only what the page actually has: an empty section is noise, and the
+            editor already teaches "/" and "[[" when you type them. */}
+        {(subpages.length > 0 || backlinks.length > 0 || outlinks.length > 0) && (
+          <div className="np-footer">
+            {subpages.length > 0 && (
+              <section>
+                <h2 className="tile-title">Sub-pages</h2>
+                <ul className="np-links">
+                  {subpages.map((child) => (
+                    <li key={child.id}>
+                      <Link href={`/notes/${child.id}`}>
+                        <span aria-hidden>{child.icon || <IconNote />}</span>
+                        {child.title || "Untitled"}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
-          </section>
 
-          <section>
-            <h2 className="tile-title">Backlinks</h2>
-            {backlinks.length ? (
-              <ul className="np-links">
-                {backlinks.map((item) => (
-                  <li key={item.id}>
-                    <Link href={`/notes/${item.id}`}>
-                      <span aria-hidden>{item.icon || <IconNote />}</span>
-                      {item.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="np-empty">
-                Write <code>[[{form.title || "this page"}]]</code> in another page to link here.
-              </p>
+            {backlinks.length > 0 && (
+              <section>
+                <h2 className="tile-title">Backlinks</h2>
+                <ul className="np-links">
+                  {backlinks.map((item) => (
+                    <li key={item.id}>
+                      <Link href={`/notes/${item.id}`}>
+                        <span aria-hidden>{item.icon || <IconNote />}</span>
+                        {item.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             )}
-          </section>
 
-          {outlinks.length > 0 && (
-            <section>
-              <h2 className="tile-title">Links out</h2>
-              <ul className="np-links">
-                {outlinks.map((item) => (
-                  <li key={item.id}>
-                    <Link href={`/notes/${item.id}`}>
-                      <span aria-hidden>{item.icon || <IconNote />}</span>
-                      {item.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
-
-        <p className="np-hint">
-          Type <span>/</span> for blocks, <span>[[</span> to link a page, <span>Tab</span> to indent a
-          list. Drag <span>⠿</span> to move a block, or click it to send the line to Tasks.
-        </p>
+            {outlinks.length > 0 && (
+              <section>
+                <h2 className="tile-title">Links out</h2>
+                <ul className="np-links">
+                  {outlinks.map((item) => (
+                    <li key={item.id}>
+                      <Link href={`/notes/${item.id}`}>
+                        <span aria-hidden>{item.icon || <IconNote />}</span>
+                        {item.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

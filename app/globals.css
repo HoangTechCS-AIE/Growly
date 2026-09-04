@@ -823,7 +823,7 @@ input[type="number"]::-webkit-inner-spin-button { @apply appearance-none; }
 /* ---------------------------------------------------------- page canvas -- */
 
 .np-page {
-  @apply overflow-hidden rounded-tile border border-line bg-surface;
+  @apply flex min-h-full flex-col overflow-hidden rounded-tile border border-line bg-surface;
 }
 
 .np-cover {
@@ -842,7 +842,7 @@ input[type="number"]::-webkit-inner-spin-button { @apply appearance-none; }
 }
 
 .np-body {
-  @apply mx-auto w-full pb-16;
+  @apply mx-auto w-full flex-1 pb-16;
   max-width: 860px;
   padding-left: 16px;
   padding-right: 16px;
@@ -923,20 +923,6 @@ input[type="number"]::-webkit-inner-spin-button { @apply appearance-none; }
     hover:bg-surface-2;
 }
 .np-links a svg { @apply h-3.5 w-3.5 text-muted; }
-.np-empty {
-  @apply mt-1.5 text-sm text-muted;
-}
-.np-empty code {
-  @apply rounded-md bg-surface-3 px-1 py-0.5 font-mono text-xs text-accent;
-}
-
-.np-hint {
-  @apply mt-6 text-xs text-muted;
-}
-.np-hint span {
-  @apply rounded-md border border-line bg-surface-2 px-1 py-0.5 font-mono text-[11px] text-ink;
-}
-
 /* Inline marks inside an unfocused block. */
 .nb-content code {
   @apply rounded-md bg-surface-3 px-1 py-0.5 font-mono text-[0.88em] text-accent;
