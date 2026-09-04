@@ -32,7 +32,7 @@ export function Timeline({
   if (!projects.length) {
     return (
       <p className="tile text-center text-sm text-muted">
-        No projects yet. Create one in Strategy to see it on the timeline.
+        No projects yet. Create one in Projects to see it on the timeline.
       </p>
     );
   }

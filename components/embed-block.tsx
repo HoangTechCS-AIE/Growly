@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  embedGoal, embedTasks, toggleTaskDone, type EmbeddedGoal, type EmbeddedTask,
-} from "@/lib/actions";
+import { embedTasks, toggleTaskDone, type EmbeddedTask } from "@/lib/actions";
 import { parseParams, stringifyParams } from "@/lib/blocks";
 import { IconCheck } from "./icons";
 import { STATUS_LABEL, TASK_STATUSES, type ProjectView, type TaskStatus } from "@/lib/types";
@@ -36,14 +34,13 @@ export function TasksEmbed({
   const config = parseParams(params);
   // No explicit filter means "whatever this page is about".
   const projectId = config.project ?? context.projectId ?? "";
-  const goalId = config.goal ?? "";
   const status = config.status ?? "";
   const limit = Number(config.limit ?? 8);
   const inherited = config.project === undefined;
 
   const load = useCallback(() => {
     let cancelled = false;
-    embedTasks({ projectId, goalId, status, limit })
+    embedTasks({ projectId, status, limit })
       .then((rows) => {
         if (!cancelled) {
           setTasks(rows);
@@ -56,7 +53,7 @@ export function TasksEmbed({
     return () => {
       cancelled = true;
     };
-  }, [projectId, goalId, status, limit]);
+  }, [projectId, status, limit]);
 
   useEffect(() => load(), [load]);
 
@@ -157,74 +154,6 @@ export function TasksEmbed({
             );
           })}
         </ul>
-      )}
-    </div>
-  );
-}
-
-/* --------------------------------------------------------- goal progress -- */
-
-export function GoalEmbed({
-  params, context, selected, onParams,
-}: {
-  params: string;
-  context: EmbedContext;
-  selected: boolean;
-  onParams: (next: string) => void;
-}) {
-  const [goal, setGoal] = useState<EmbeddedGoal | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  const config = parseParams(params);
-  const goalId = config.id ?? "";
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoaded(false);
-    embedGoal(goalId)
-      .then((row) => {
-        if (cancelled) return;
-        setGoal(row);
-        setLoaded(true);
-      })
-      .catch(() => {
-        if (!cancelled) setLoaded(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [goalId]);
-
-  const percent = goal && goal.task_total > 0 ? Math.round((goal.task_done / goal.task_total) * 100) : 0;
-
-  return (
-    <div className={cn("nb-embed", selected && "nb-embed-selected")}>
-      <div className="nb-embed-head">
-        <span className="nb-embed-label">Goal</span>
-        <span className="nb-embed-hint">kept from an earlier version</span>
-      </div>
-
-      {!loaded ? (
-        <p className="nb-embed-empty">Loading…</p>
-      ) : !goal ? (
-        <p className="nb-embed-empty">Pick a goal to track here.</p>
-      ) : (
-        <div className="nb-goal">
-          <Link href={`/tasks?goal=${goal.id}`} className="nb-goal-title">
-            {goal.title}
-          </Link>
-          <div className="nb-goal-bar" role="img" aria-label={`${percent}% of tasks done`}>
-            <span style={{ width: `${percent}%` }} />
-          </div>
-          <p className="nb-goal-meta">
-            <span>
-              {goal.task_done}/{goal.task_total} tasks · {percent}%
-            </span>
-            {goal.minutes_logged > 0 && <span>{formatDuration(goal.minutes_logged)} logged</span>}
-            {goal.target_date && <span>target {goal.target_date}</span>}
-            {goal.metric && <span className="truncate">{goal.metric}</span>}
-          </p>
-        </div>
       )}
     </div>
   );

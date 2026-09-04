@@ -10,7 +10,6 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
   done: "Done",
 };
 
-export type GoalStatus = "active" | "paused" | "done" | "dropped";
 export type ProjectStatus = "planned" | "active" | "paused" | "done";
 export type NoteKind = "quick" | "daily" | "meeting" | "project" | "template";
 
@@ -37,60 +36,8 @@ export interface Tag {
   created_at: string;
 }
 
-export interface Vision {
-  id: string;
-  title: string;
-  description: string | null;
-  horizon: string | null;
-  position: number;
-  archived: number;
-  created_at: string;
-}
-
-export interface Goal {
-  id: string;
-  vision_id: string | null;
-  area_id: string | null;
-  title: string;
-  description: string | null;
-  metric: string | null;
-  start_date: string | null;
-  target_date: string | null;
-  status: GoalStatus;
-  position: number;
-  archived: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface GoalView extends Goal {
-  vision_title: string | null;
-  area_name: string | null;
-  area_color: string | null;
-  task_total: number;
-  task_done: number;
-  project_total: number;
-  minutes_logged: number;
-}
-
-export interface Strategy {
-  id: string;
-  goal_id: string | null;
-  title: string;
-  description: string | null;
-  start_date: string | null;
-  end_date: string | null;
-  status: string;
-  position: number;
-  archived: number;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Project {
   id: string;
-  strategy_id: string | null;
-  goal_id: string | null;
   area_id: string | null;
   title: string;
   description: string | null;
@@ -105,8 +52,6 @@ export interface Project {
 }
 
 export interface ProjectView extends Project {
-  goal_title: string | null;
-  strategy_title: string | null;
   task_total: number;
   task_done: number;
   note_total: number;
@@ -129,7 +74,6 @@ export interface Task {
   short_term_outcome: string | null;
   long_term_contribution: string | null;
   next_action: string | null;
-  goal_id: string | null;
   project_id: string | null;
   area_id: string | null;
   parent_id: string | null;
@@ -156,8 +100,6 @@ export interface Task {
 export interface TaskView extends Task {
   project_title: string | null;
   project_color: string | null;
-  effective_goal_id: string | null;
-  goal_title: string | null;
   area_name: string | null;
   area_color: string | null;
   subtask_total: number;
@@ -178,7 +120,6 @@ export interface Note {
   cover: string | null;
   position: number;
   project_id: string | null;
-  goal_id: string | null;
   task_id: string | null;
   pinned: number;
   archived: number;
@@ -188,7 +129,6 @@ export interface Note {
 
 export interface NoteView extends Note {
   project_title: string | null;
-  goal_title: string | null;
   tags: Tag[];
 }
 
@@ -218,7 +158,7 @@ export function coverCss(key: string | null): string | null {
   return NOTE_COVERS.find((c) => c.key === key)?.css ?? null;
 }
 
-export type SearchKind = "note" | "task" | "project" | "goal";
+export type SearchKind = "note" | "task" | "project";
 
 export interface SearchHit {
   kind: SearchKind;
@@ -283,13 +223,4 @@ export interface Settings {
   week_starts_on: number;
   /** One of the ids in lib/accents.ts. */
   accent: string;
-}
-
-export interface ReviewRecord {
-  id: string;
-  kind: "daily" | "weekly" | "monthly";
-  period_key: string;
-  data: Record<string, string>;
-  created_at: string;
-  updated_at: string;
 }

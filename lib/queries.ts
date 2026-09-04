@@ -1,9 +1,9 @@
 import "server-only";
 import { all, get } from "./db";
 import type {
-  Area, GoalView, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
-  ReviewRecord, SearchHit, SearchKind, Settings, Strategy, Tag, Task, TaskEvent, TaskStatus,
-  TaskView, TimeLog, Vision,
+  Area, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
+  SearchHit, SearchKind, Settings, Tag, Task, TaskEvent, TaskStatus,
+  TaskView, TimeLog,
 } from "./types";
 import { SNIPPET_CLOSE, SNIPPET_OPEN, STATUS_LABEL } from "./types";
 export type { SearchHit, SearchKind } from "./types";
@@ -38,93 +38,20 @@ export function listTags(): (Tag & { usage: number })[] {
     FROM tags tg ORDER BY tg.name`);
 }
 
-/* ------------------------------------------------------------------ strategy */
-
-export function listVisions(): Vision[] {
-  return all<Vision>("SELECT * FROM visions WHERE archived = 0 ORDER BY position, created_at");
-}
-
-const GOAL_SELECT = `
-  SELECT g.*,
-    v.title AS vision_title,
-    a.name  AS area_name,
-    a.color AS area_color,
-    (SELECT COUNT(*) FROM tasks t
-       LEFT JOIN projects p ON p.id = t.project_id
-       LEFT JOIN strategies s ON s.id = p.strategy_id
-       WHERE COALESCE(t.goal_id, p.goal_id, s.goal_id) = g.id AND t.archived = 0) AS task_total,
-    (SELECT COUNT(*) FROM tasks t
-       LEFT JOIN projects p ON p.id = t.project_id
-       LEFT JOIN strategies s ON s.id = p.strategy_id
-       WHERE COALESCE(t.goal_id, p.goal_id, s.goal_id) = g.id AND t.archived = 0
-         AND t.status = 'done') AS task_done,
-    (SELECT COUNT(*) FROM projects p2
-       LEFT JOIN strategies s2 ON s2.id = p2.strategy_id
-       WHERE COALESCE(p2.goal_id, s2.goal_id) = g.id AND p2.archived = 0) AS project_total,
-    (SELECT COALESCE(SUM(l.minutes), 0) FROM time_logs l
-       JOIN tasks t ON t.id = l.task_id
-       LEFT JOIN projects p ON p.id = t.project_id
-       LEFT JOIN strategies s ON s.id = p.strategy_id
-       WHERE COALESCE(t.goal_id, p.goal_id, s.goal_id) = g.id) AS minutes_logged
-  FROM goals g
-  LEFT JOIN visions v ON v.id = g.vision_id
-  LEFT JOIN areas a   ON a.id = g.area_id`;
-
-export function listGoals(opts: { status?: string; visionId?: string } = {}): GoalView[] {
-  const where = ["g.archived = 0"];
-  const params: unknown[] = [];
-  if (opts.status) {
-    where.push("g.status = ?");
-    params.push(opts.status);
-  }
-  if (opts.visionId) {
-    where.push("g.vision_id = ?");
-    params.push(opts.visionId);
-  }
-  return all<GoalView>(
-    `${GOAL_SELECT} WHERE ${where.join(" AND ")} ORDER BY g.position, g.created_at`,
-    ...params,
-  );
-}
-
-export function getGoal(id: string): GoalView | undefined {
-  return get<GoalView>(`${GOAL_SELECT} WHERE g.id = ?`, id);
-}
-
-export function listStrategies(goalId?: string): Strategy[] {
-  if (goalId) {
-    return all<Strategy>(
-      "SELECT * FROM strategies WHERE archived = 0 AND goal_id = ? ORDER BY position, start_date",
-      goalId,
-    );
-  }
-  return all<Strategy>("SELECT * FROM strategies WHERE archived = 0 ORDER BY position, start_date");
-}
+/* ------------------------------------------------------------------ projects */
 
 const PROJECT_SELECT = `
   SELECT p.*,
-    g.title AS goal_title,
-    s.title AS strategy_title,
     (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.archived = 0) AS task_total,
     (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.archived = 0
        AND t.status = 'done') AS task_done,
     (SELECT COUNT(*) FROM notes n WHERE n.project_id = p.id AND n.archived = 0) AS note_total,
     (SELECT MAX(t.updated_at) FROM tasks t WHERE t.project_id = p.id) AS last_activity
-  FROM projects p
-  LEFT JOIN strategies s ON s.id = p.strategy_id
-  LEFT JOIN goals g ON g.id = COALESCE(p.goal_id, s.goal_id)`;
+  FROM projects p`;
 
-export function listProjects(opts: { goalId?: string; strategyId?: string; status?: string } = {}): ProjectView[] {
+export function listProjects(opts: { status?: string } = {}): ProjectView[] {
   const where = ["p.archived = 0"];
   const params: unknown[] = [];
-  if (opts.goalId) {
-    where.push("COALESCE(p.goal_id, s.goal_id) = ?");
-    params.push(opts.goalId);
-  }
-  if (opts.strategyId) {
-    where.push("p.strategy_id = ?");
-    params.push(opts.strategyId);
-  }
   if (opts.status) {
     where.push("p.status = ?");
     params.push(opts.status);
@@ -172,8 +99,6 @@ const TASK_SELECT = `
   SELECT t.*,
     p.title AS project_title,
     p.color AS project_color,
-    g.id    AS effective_goal_id,
-    g.title AS goal_title,
     a.name  AS area_name,
     a.color AS area_color,
     (SELECT COUNT(*) FROM tasks st WHERE st.parent_id = t.id AND st.archived = 0) AS subtask_total,
@@ -183,14 +108,11 @@ const TASK_SELECT = `
        WHERE d.task_id = t.id AND dt.status <> 'done') AS blocked_by,
     (SELECT COUNT(*) FROM day_focus f WHERE f.task_id = t.id AND f.date = ?) AS is_focus
   FROM tasks t
-  LEFT JOIN projects p   ON p.id = t.project_id
-  LEFT JOIN strategies s ON s.id = p.strategy_id
-  LEFT JOIN goals g      ON g.id = COALESCE(t.goal_id, p.goal_id, s.goal_id)
-  LEFT JOIN areas a      ON a.id = COALESCE(t.area_id, p.area_id, g.area_id)`;
+  LEFT JOIN projects p ON p.id = t.project_id
+  LEFT JOIN areas a    ON a.id = COALESCE(t.area_id, p.area_id)`;
 
 export interface TaskFilter {
   status?: TaskStatus[];
-  goalId?: string;
   projectId?: string;
   areaId?: string;
   tagId?: string;
@@ -222,16 +144,12 @@ export function listTasks(f: TaskFilter = {}, today = todayISO()): TaskView[] {
   } else if (!f.includeDone) {
     where.push("t.status <> 'done'");
   }
-  if (f.goalId) {
-    where.push("g.id = ?");
-    params.push(f.goalId);
-  }
   if (f.projectId) {
     where.push("t.project_id = ?");
     params.push(f.projectId);
   }
   if (f.areaId) {
-    where.push("COALESCE(t.area_id, p.area_id, g.area_id) = ?");
+    where.push("COALESCE(t.area_id, p.area_id) = ?");
     params.push(f.areaId);
   }
   if (f.tagId) {
@@ -355,10 +273,9 @@ export function loggedMinutes(taskId: string): number {
 /* --------------------------------------------------------------------- notes */
 
 const NOTE_SELECT = `
-  SELECT n.*, p.title AS project_title, g.title AS goal_title
+  SELECT n.*, p.title AS project_title
   FROM notes n
-  LEFT JOIN projects p ON p.id = n.project_id
-  LEFT JOIN goals g ON g.id = n.goal_id`;
+  LEFT JOIN projects p ON p.id = n.project_id`;
 
 export interface NoteFilter {
   kind?: string;
@@ -367,7 +284,6 @@ export interface NoteFilter {
   search?: string;
   tagId?: string;
   projectId?: string;
-  goalId?: string;
   taskId?: string;
   pinned?: boolean;
   includeArchived?: boolean;
@@ -398,10 +314,6 @@ export function listNotes(f: NoteFilter = {}): NoteView[] {
   if (f.projectId) {
     where.push("n.project_id = ?");
     params.push(f.projectId);
-  }
-  if (f.goalId) {
-    where.push("n.goal_id = ?");
-    params.push(f.goalId);
   }
   if (f.taskId) {
     where.push("n.task_id = ?");
@@ -556,45 +468,6 @@ export function capacityForRange(from: string, to: string) {
   );
 }
 
-/** Share of the period's work that ladders up to a long-term goal. */
-export function alignmentScore(from: string, to: string) {
-  const row = get<{ total: number; aligned: number }>(
-    `SELECT COUNT(*) AS total,
-       SUM(CASE WHEN COALESCE(t.goal_id, p.goal_id, s.goal_id) IS NOT NULL THEN 1 ELSE 0 END) AS aligned
-     FROM tasks t
-     LEFT JOIN projects p ON p.id = t.project_id
-     LEFT JOIN strategies s ON s.id = p.strategy_id
-     WHERE t.archived = 0
-       AND ((t.scheduled_date BETWEEN ? AND ?)
-            OR (DATE(t.completed_at) BETWEEN ? AND ?))`,
-    from,
-    to,
-    from,
-    to,
-  );
-  const total = row?.total ?? 0;
-  const aligned = row?.aligned ?? 0;
-  return { total, aligned, score: total ? Math.round((aligned / total) * 100) : 0 };
-}
-
-export function timePerGoal(from: string, to: string) {
-  return all<{ goal_id: string | null; goal_title: string | null; minutes: number }>(
-    `SELECT COALESCE(t.goal_id, p.goal_id, s.goal_id) AS goal_id,
-            g.title AS goal_title,
-            SUM(l.minutes) AS minutes
-     FROM time_logs l
-     JOIN tasks t ON t.id = l.task_id
-     LEFT JOIN projects p ON p.id = t.project_id
-     LEFT JOIN strategies s ON s.id = p.strategy_id
-     LEFT JOIN goals g ON g.id = COALESCE(t.goal_id, p.goal_id, s.goal_id)
-     WHERE l.date BETWEEN ? AND ?
-     GROUP BY 1, 2
-     ORDER BY minutes DESC`,
-    from,
-    to,
-  );
-}
-
 export function loggedMinutesByDay(from: string, to: string) {
   return all<{ date: string; minutes: number }>(
     `SELECT date, SUM(minutes) AS minutes FROM time_logs
@@ -677,37 +550,7 @@ export function stuckItems(today = todayISO()) {
      ORDER BY last_activity`,
     staleDate,
   );
-  const idleGoals = all<GoalView>(
-    `${GOAL_SELECT}
-     WHERE g.archived = 0 AND g.status = 'active'
-       AND NOT EXISTS (
-         SELECT 1 FROM tasks t
-         LEFT JOIN projects p ON p.id = t.project_id
-         LEFT JOIN strategies s ON s.id = p.strategy_id
-         WHERE COALESCE(t.goal_id, p.goal_id, s.goal_id) = g.id
-           AND t.status = 'done' AND DATE(t.completed_at) >= ?)
-     ORDER BY g.position`,
-    staleDate,
-  );
-  return { postponed, staleProjects, idleGoals };
-}
-
-export function getReview(kind: string, periodKey: string): ReviewRecord | undefined {
-  const row = get<Omit<ReviewRecord, "data"> & { data: string }>(
-    "SELECT * FROM reviews WHERE kind = ? AND period_key = ?",
-    kind,
-    periodKey,
-  );
-  if (!row) return undefined;
-  return { ...row, data: JSON.parse(row.data) as Record<string, string> } as ReviewRecord;
-}
-
-export function listReviews(kind: string, limit = 10): ReviewRecord[] {
-  return all<Omit<ReviewRecord, "data"> & { data: string }>(
-    "SELECT * FROM reviews WHERE kind = ? ORDER BY period_key DESC LIMIT ?",
-    kind,
-    limit,
-  ).map((r) => ({ ...r, data: JSON.parse(r.data) as Record<string, string> }) as ReviewRecord);
+  return { postponed, staleProjects };
 }
 
 /** Turn free text into an FTS5 MATCH expression: every word required, the last
@@ -726,7 +569,7 @@ function ftsQuery(raw: string): string {
     .join(" ");
 }
 
-/** One ranked list across notes, tasks, projects and goals. */
+/** One ranked list across notes, tasks and projects. */
 export function searchAll(raw: string, limit = 30): SearchHit[] {
   const match = ftsQuery(raw);
   if (!match) return [];
@@ -746,7 +589,7 @@ export function searchAll(raw: string, limit = 30): SearchHit[] {
               snippet(search_index, 3, ?, ?, '…', 14) AS body_snippet,
               snippet(search_index, 2, ?, ?, '…', 14) AS title_snippet
        FROM search_index
-       WHERE search_index MATCH ? AND kind <> 'goal'
+       WHERE search_index MATCH ?
        ORDER BY bm25(search_index, 0.0, 0.0, 10.0, 1.0, 0.5)
        LIMIT ?`,
       SNIPPET_OPEN,
@@ -801,22 +644,10 @@ export function searchAll(raw: string, limit = 30): SearchHit[] {
   const projectIds = idsOf("project");
   const projects = new Map(
     (projectIds.length
-      ? all<{ id: string; goal_title: string | null }>(
-          `SELECT p.id, g.title AS goal_title
-           FROM projects p LEFT JOIN goals g ON g.id = p.goal_id
-           WHERE p.archived = 0 AND p.id IN (${holes(projectIds)})`,
-          ...projectIds,
-        )
-      : []
-    ).map((row) => [row.id, row]),
-  );
-
-  const goalIds = idsOf("goal");
-  const goals = new Map(
-    (goalIds.length
       ? all<{ id: string; status: string }>(
-          `SELECT id, status FROM goals WHERE archived = 0 AND id IN (${holes(goalIds)})`,
-          ...goalIds,
+          `SELECT id, status FROM projects
+           WHERE archived = 0 AND id IN (${holes(projectIds)})`,
+          ...projectIds,
         )
       : []
     ).map((row) => [row.id, row]),
@@ -838,14 +669,10 @@ export function searchAll(raw: string, limit = 30): SearchHit[] {
         context: task.project_title ?? STATUS_LABEL[task.status as TaskStatus] ?? null,
         href: `/tasks/${row.ref_id}`,
       });
-    } else if (row.kind === "project") {
+    } else {
       const project = projects.get(row.ref_id);
       if (!project) continue;
-      hits.push({ ...base, icon: null, context: project.goal_title, href: `/tasks?project=${row.ref_id}` });
-    } else {
-      const goal = goals.get(row.ref_id);
-      if (!goal) continue;
-      hits.push({ ...base, icon: null, context: goal.status, href: `/tasks?goal=${row.ref_id}` });
+      hits.push({ ...base, icon: null, context: project.status, href: `/tasks?project=${row.ref_id}` });
     }
   }
   return hits;
@@ -859,6 +686,5 @@ export function search(q: string, today = todayISO()) {
     tasks: pick("task").map((id) => getTask(id, today)).filter(Boolean) as TaskView[],
     notes: pick("note").map((id) => getNote(id)).filter(Boolean) as NoteView[],
     projects: pick("project").map((id) => getProject(id)).filter(Boolean) as ProjectView[],
-    goals: pick("goal").map((id) => getGoal(id)).filter(Boolean) as GoalView[],
   };
 }

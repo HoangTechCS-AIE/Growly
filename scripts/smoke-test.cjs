@@ -1,6 +1,6 @@
 /**
  * End-to-end check of the data layer: quick-add parsing, recurrence, dependencies,
- * focus, postponing, note links and the alignment score.
+ * focus, postponing, note links and the project focus score.
  * Run with `npm run test:flows` (uses a throwaway database).
  */
 const Module = require("node:module");
@@ -43,17 +43,24 @@ const check = (label, fn) => {
 
 console.log("\nGrowly data-layer smoke test");
 
-// --- strategy hierarchy -----------------------------------------------------
-const goalId = await actions.createGoal({ title: "Ship the beta", metric: "20 users" });
-const strategyId = await actions.createStrategy({ title: "6-week sprint", goal_id: goalId });
-const projectId = await actions.createProject({ title: "Landing", strategy_id: strategyId });
+// --- projects ---------------------------------------------------------------
+const projectId = await actions.createProject({ title: "Landing", area_id: "area_work" });
 
 const inheritId = await actions.createTask({ title: "Inheriting task", project_id: projectId });
-check("goal is inherited, not copied", () => {
+check("a task inherits its project's area rather than copying it", () => {
   const task = queries.getTask(inheritId);
-  assert.equal(task.goal_id, null, "no direct goal on the task");
-  assert.equal(task.effective_goal_id, goalId, "goal resolved through the project's strategy");
-  assert.equal(task.goal_title, "Ship the beta");
+  assert.equal(task.area_id, null, "no direct area on the task");
+  assert.equal(task.area_name, "Work", "area resolved through the project");
+  assert.equal(task.project_title, "Landing");
+});
+
+const milestoneProject = queries.listMilestones({ projectId });
+await actions.createMilestone(projectId, "Page live", today);
+check("a milestone hangs off its project", () => {
+  assert.equal(milestoneProject.length, 0);
+  const after = queries.listMilestones({ projectId });
+  assert.equal(after.length, 1);
+  assert.equal(after[0].project_title, "Landing");
 });
 
 // --- quick add --------------------------------------------------------------
@@ -123,14 +130,14 @@ check("postponing moves the day and counts the slip", () => {
 });
 
 await actions.logTime(quickId, 30);
-check("logged time rolls up to the goal it serves", () => {
+check("logged time rolls up to the project it serves", () => {
   assert.equal(queries.loggedMinutes(quickId), 30);
-  const perGoal = queries.timePerGoal(today, today);
-  const row = perGoal.find((r) => r.goal_id === goalId);
+  const perProject = queries.timePerProject(today, today);
+  const row = perProject.find((r) => r.project_id === projectId);
   assert.equal(row.minutes, 30);
 });
 
-// --- capacity and alignment -------------------------------------------------
+// --- capacity and project focus ---------------------------------------------
 await actions.updateSettings({ daily_capacity_min: "60" });
 await actions.createTask({ title: "Long block", scheduled_date: today, estimate_minutes: 240 });
 check("planning past the daily capacity raises the over-capacity flag", () => {
@@ -139,11 +146,11 @@ check("planning past the daily capacity raises the over-capacity flag", () => {
   assert.ok(capacity.planned >= 240);
 });
 
-check("alignment score counts work that ladders up to a goal", () => {
-  const alignment = queries.alignmentScore(today, tomorrow);
-  assert.ok(alignment.total > 0);
-  assert.ok(alignment.aligned > 0);
-  assert.ok(alignment.score > 0 && alignment.score <= 100);
+check("project focus score counts work that belongs to a project", () => {
+  const focus = queries.projectFocusScore(today, tomorrow);
+  assert.ok(focus.total > 0);
+  assert.ok(focus.grouped > 0);
+  assert.ok(focus.score > 0 && focus.score <= 100);
 });
 
 // --- notes ------------------------------------------------------------------
@@ -164,17 +171,7 @@ check("a note line becomes a task that keeps the note's context", () => {
   const task = queries.getTask(fromLineId);
   assert.equal(task.title, "Send the deck");
   assert.equal(task.project_id, projectId);
-  assert.equal(task.effective_goal_id, goalId);
   assert.match(task.notes, /Kickoff/);
-});
-
-// --- reviews ----------------------------------------------------------------
-await actions.saveReview("weekly", util.weekKey(today), { moved: "Landing page shipped" });
-await actions.saveReview("weekly", util.weekKey(today), { moved: "Landing page shipped and tested" });
-check("saving a review twice updates the same period", () => {
-  const review = queries.getReview("weekly", util.weekKey(today));
-  assert.equal(review.data.moved, "Landing page shipped and tested");
-  assert.equal(queries.listReviews("weekly").length, 1);
 });
 
 // --- search -----------------------------------------------------------------
@@ -182,12 +179,6 @@ check("search spans tasks, notes and projects", () => {
   assert.ok(queries.search("Landing").projects.length >= 1, "matches a project");
   assert.ok(queries.search("hero").tasks.length >= 1, "matches a task title");
   assert.ok(queries.search("Positioning").notes.length >= 1, "matches a note");
-});
-
-check("goals are no longer surfaced in search", () => {
-  // Goals still exist in the database, they are just not part of the UI.
-  assert.equal(queries.search("beta").goals.length, 0, "goal hits are filtered out");
-  assert.ok(queries.getGoal(goalId), "the goal row itself is untouched");
 });
 
 console.log(`\n${passed} checks passed.\n`);

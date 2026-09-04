@@ -40,14 +40,13 @@ export function NotePage({
   const [showEmoji, setShowEmoji] = useState(false);
   const [showCover, setShowCover] = useState(false);
   const [showProps, setShowProps] = useState(
-    Boolean(note.project_id || note.goal_id || note.tags.length || note.kind !== "quick"),
+    Boolean(note.project_id || note.tags.length || note.kind !== "quick"),
   );
   const [form, setForm] = useState({
     title: note.title,
     content: note.content,
     kind: note.kind as NoteKind,
     project_id: note.project_id ?? "",
-    goal_id: note.goal_id ?? "",
     tags: note.tags.map((tag) => tag.name).join(", "),
   });
   const formRef = useRef(form);
@@ -72,7 +71,6 @@ export function NotePage({
       content: note.content,
       kind: note.kind as NoteKind,
       project_id: note.project_id ?? "",
-      goal_id: note.goal_id ?? "",
       tags: note.tags.map((tag) => tag.name).join(", "),
     });
   }, [note]);
@@ -88,7 +86,6 @@ export function NotePage({
           content: snapshot.content,
           kind: snapshot.kind,
           project_id: snapshot.project_id || null,
-          goal_id: snapshot.goal_id || null,
           tags: snapshot.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
         });
         setDirty(false);

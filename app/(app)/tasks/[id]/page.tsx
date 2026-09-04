@@ -64,7 +64,6 @@ export default async function TaskDetailPage({ params }: PageProps<"/tasks/[id]"
           <Ladder
             project={task.project_title}
             projectColor={task.project_color}
-            goal={task.goal_title}
             area={task.area_name}
             className="mt-2 text-sm"
           />

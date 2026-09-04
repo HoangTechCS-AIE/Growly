@@ -61,7 +61,7 @@ export default async function TodayPage() {
     .map((area) => ({ ...area, count: openTasks.filter((t) => t.area_name === area.name).length }))
     .sort((a, b) => b.count - a.count);
 
-  const drifting = stuck.postponed.length + stuck.staleProjects.length + stuck.idleGoals.length;
+  const drifting = stuck.postponed.length + stuck.staleProjects.length;
 
   return (
     <div className="mx-auto max-w-[1400px]">
@@ -69,15 +69,10 @@ export default async function TodayPage() {
         eyebrow={formatDateLong(today)}
         title="Today"
         actions={
-          <>
-            <Link href="/review?kind=daily" className="btn btn-outline">
-              Daily review
-            </Link>
-            <Link href="/calendar?view=day" className="btn btn-outline">
-              <IconCalendar className="h-4 w-4" />
-              Calendar
-            </Link>
-          </>
+          <Link href="/calendar?view=day" className="btn btn-outline">
+            <IconCalendar className="h-4 w-4" />
+            Calendar
+          </Link>
         }
       />
 
@@ -230,7 +225,7 @@ export default async function TodayPage() {
             >
               {inProject.score}%
             </span>
-            <span className="text-xs text-muted">of work serves a goal</span>
+            <span className="text-xs text-muted">of work belongs to a project</span>
           </div>
           <MiniBars
             data={weekDates(weekStart).map((date) => ({
@@ -311,15 +306,9 @@ export default async function TodayPage() {
                   </Link>
                 </li>
               ))}
-              {stuck.idleGoals.slice(0, 2).map((goal) => (
-                <li key={goal.id} className="list-row">
-                  <span className="tag">idle</span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">{goal.title}</span>
-                </li>
-              ))}
             </ul>
           ) : (
-            <EmptyState compact title="Nothing is drifting" hint="No repeated postponements, stalled projects or idle goals." />
+            <EmptyState compact title="Nothing is drifting" hint="No repeated postponements and no stalled projects." />
           )}
         </Tile>
 
@@ -401,7 +390,6 @@ function Spotlight({
           onDark
           project={task.project_title}
           projectColor={task.project_color}
-          goal={task.goal_title}
           area={task.area_name}
           className="text-sm"
         />

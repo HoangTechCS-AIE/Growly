@@ -144,7 +144,7 @@ export const NOTE_TEMPLATES: { key: string; label: string; title: string; conten
     key: "weekly-review",
     label: "Weekly review",
     title: "Weekly review",
-    content: `## What moved forward\n- \n\n## What stalled, and why\n- \n\n## Goals: still the right ones?\n- \n\n## Strategy adjustments for next week\n- \n\n## Top 3 for next week\n1. \n2. \n3. \n`,
+    content: `## What moved forward\n- \n\n## What stalled, and why\n- \n\n## Projects worth rethinking\n- \n\n## What to stop doing\n- \n\n## Top 3 for next week\n1. \n2. \n3. \n`,
   },
   {
     key: "brainstorm",

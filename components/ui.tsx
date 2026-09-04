@@ -212,18 +212,16 @@ export function MiniBars({
 
 /* --------------------------------------------------------------- pieces -- */
 
-/** The product's core relationship, spelled out: project → goal. */
+/** Where a task sits: its project, or the area it falls under. */
 export function Ladder({
   project,
   projectColor,
-  goal,
   area,
   className,
   onDark = false,
 }: {
   project?: string | null;
   projectColor?: string | null;
-  goal?: string | null;
   area?: string | null;
   className?: string;
   onDark?: boolean;
@@ -236,23 +234,11 @@ export function Ladder({
         <span className="truncate">{project}</span>
       </span>,
     );
-  } else if (area) {
+  }
+  if (area) {
     parts.push(
       <span key="area" className="truncate">
         {area}
-      </span>,
-    );
-  }
-  if (goal) {
-    parts.push(
-      <span key="goal" className="truncate">
-        {goal}
-      </span>,
-    );
-  } else {
-    parts.push(
-      <span key="nogoal" className={cn("truncate", onDark ? "text-accent-deep-ink/70" : "text-warn")}>
-        No goal yet
       </span>,
     );
   }

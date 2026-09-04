@@ -709,7 +709,6 @@ expect(
   !shown.includes("Short-term outcome") && !shown.includes("Long-term contribution"),
   "the short-term and long-term fields are gone from the task form",
 );
-expect(!shown.includes("Goal"), "the Goal picker is gone from the task form");
 expect(
   !shown.includes("Repeat") && !shown.includes("Waiting on"),
   "rarely-used fields start folded away",
@@ -738,19 +737,12 @@ expect(
   "the slim form still creates a task",
 );
 
-/* ------------------------------------------------ goals are out of the way */
+/* --------------------------------------------------- projects lead the app */
 await page.goto(BASE, { waitUntil: "networkidle2" });
 await wait(500);
 const todayText = (await page.evaluate(() => document.body.innerText)).toLowerCase();
 expect(todayText.includes("active projects"), "Today reports on projects");
-expect(!todayText.includes("alignment"), "the goal-alignment tile is gone from Today");
-
-await page.goto(`${BASE}/review?kind=weekly`, { waitUntil: "networkidle2" });
-await wait(500);
-expect(
-  (await page.evaluate(() => document.body.innerText)).toLowerCase().includes("project progress"),
-  "the weekly review reports project progress",
-);
+expect(!todayText.includes("alignment"), "no alignment tile on Today");
 
 /* ------------------------------------------------------- morning planning -- */
 await page.goto(BASE, { waitUntil: "networkidle2" });

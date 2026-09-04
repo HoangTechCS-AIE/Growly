@@ -284,7 +284,7 @@ export function DayWeekGrid({
                             task.status === "done" && "opacity-60 line-through",
                           )}
                           style={{ top, height: Math.max(20, duration * PX_PER_MIN) }}
-                          title={`${task.title}\n${formatClock(start)}–${formatClock(start + duration)}${task.goal_title ? `\nGoal: ${task.goal_title}` : ""}`}
+                          title={`${task.title}\n${formatClock(start)}–${formatClock(start + duration)}${task.project_title ? `\nProject: ${task.project_title}` : ""}`}
                         >
                           <Link href={`/tasks/${task.id}`} className="block truncate font-bold">
                             {task.title}
@@ -292,7 +292,7 @@ export function DayWeekGrid({
                           {duration >= 45 && (
                             <p className="truncate opacity-75">
                               {formatClock(start)}–{formatClock(start + duration)}
-                              {task.goal_title ? ` · ${task.goal_title}` : ""}
+                              {task.project_title ? ` · ${task.project_title}` : ""}
                             </p>
                           )}
                           <span

@@ -991,22 +991,6 @@ input[type="number"]::-webkit-inner-spin-button { @apply appearance-none; }
   @apply px-1 py-2 text-sm text-muted;
 }
 
-.nb-goal {
-  @apply flex flex-col gap-1.5 px-1 pb-1;
-}
-.nb-goal-title {
-  @apply text-base font-semibold text-ink hover:text-accent;
-}
-.nb-goal-bar {
-  @apply h-2 w-full overflow-hidden rounded-full bg-surface-3;
-}
-.nb-goal-bar span {
-  @apply block h-full rounded-full bg-accent transition-all;
-}
-.nb-goal-meta {
-  @apply flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted;
-}
-
 /* ---------------------------------------------------------- databases -- */
 
 .db-block {
