@@ -1,7 +1,7 @@
 /**
- * Seeds Growly with a small worked example: one vision, one goal, a running
- * strategy, two projects, tasks that carry short-term/long-term intent, notes
- * and a few time logs. Run with `npm run seed`.
+ * Seeds Growly with a small worked example: two projects with milestones, tasks
+ * that carry short-term/long-term intent, notes and a few time logs.
+ * Run with `npm run seed`.
  */
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
@@ -25,9 +25,9 @@ const today = iso(0);
 const id = () => crypto.randomUUID();
 const run = (sql, ...params) => db.prepare(sql).run(...params);
 
-const existing = db.prepare("SELECT COUNT(*) AS n FROM goals").get();
+const existing = db.prepare("SELECT COUNT(*) AS n FROM projects").get();
 if (existing.n > 0) {
-  console.log("Database already has goals — seed skipped. Delete data/growly.db to start over.");
+  console.log("Database already has projects — seed skipped. Delete data/growly.db to start over.");
   process.exit(0);
 }
 
@@ -58,67 +58,22 @@ const areas = {
   ),
 );
 
-const visionId = id();
-run(
-  "INSERT INTO visions(id, title, description, horizon, position, created_at) VALUES(?, ?, ?, ?, 0, ?)",
-  visionId,
-  "Build a product people rely on every day",
-  "A tool that turns long-term strategy into daily action — used by me first, then by others.",
-  "3 years",
-  now,
-);
-
-const goalId = id();
-run(
-  `INSERT INTO goals(id, vision_id, area_id, title, description, metric, start_date, target_date,
-     status, position, created_at, updated_at)
-   VALUES(?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, ?)`,
-  goalId, visionId, areas.work,
-  "Validate Growly with 20 real users",
-  "Prove that people actually keep using it for weekly planning before building the full product.",
-  "20 people complete a weekly review two weeks in a row",
-  today, iso(120), now, now,
-);
-
-const habitGoalId = id();
-run(
-  `INSERT INTO goals(id, vision_id, area_id, title, description, metric, start_date, target_date,
-     status, position, created_at, updated_at)
-   VALUES(?, NULL, ?, ?, ?, ?, ?, ?, 'active', 1, ?, ?)`,
-  habitGoalId, areas.health,
-  "Stay in shape while shipping",
-  "Energy is the input to everything else.",
-  "Train 3 times a week for 12 weeks",
-  today, iso(84), now, now,
-);
-
-const strategyId = id();
-run(
-  `INSERT INTO strategies(id, goal_id, title, description, start_date, end_date, status, position,
-     created_at, updated_at)
-   VALUES(?, ?, ?, ?, ?, ?, 'active', 0, ?, ?)`,
-  strategyId, goalId,
-  "8-week validation sprint",
-  "Ship a landing page, talk to 20 people, and only build what they ask for twice.",
-  today, iso(56), now, now,
-);
-
 const landingId = id();
 const interviewsId = id();
 run(
-  `INSERT INTO projects(id, strategy_id, goal_id, area_id, title, description, status, start_date,
+  `INSERT INTO projects(id, area_id, title, description, status, start_date,
      due_date, color, position, created_at, updated_at)
-   VALUES(?, ?, NULL, ?, ?, ?, 'active', ?, ?, 'indigo', 0, ?, ?)`,
-  landingId, strategyId, areas.work,
+   VALUES(?, ?, ?, ?, 'active', ?, ?, 'indigo', 0, ?, ?)`,
+  landingId, areas.work,
   "Landing page",
   "A page that explains the promise clearly enough for a stranger to sign up.",
   today, iso(21), now, now,
 );
 run(
-  `INSERT INTO projects(id, strategy_id, goal_id, area_id, title, description, status, start_date,
+  `INSERT INTO projects(id, area_id, title, description, status, start_date,
      due_date, color, position, created_at, updated_at)
-   VALUES(?, ?, NULL, ?, ?, ?, 'active', ?, ?, 'emerald', 1, ?, ?)`,
-  interviewsId, strategyId, areas.work,
+   VALUES(?, ?, ?, ?, 'active', ?, ?, 'emerald', 1, ?, ?)`,
+  interviewsId, areas.work,
   "User interviews",
   "Twenty conversations, same five questions, verbatim notes.",
   today, iso(45), now, now,
@@ -144,10 +99,10 @@ function task(fields) {
   const tid = id();
   run(
     `INSERT INTO tasks(id, title, notes, short_term_outcome, long_term_contribution, next_action,
-       goal_id, project_id, area_id, parent_id, status, important, urgent, estimate_minutes,
+       project_id, area_id, parent_id, status, important, urgent, estimate_minutes,
        due_date, scheduled_date, start_min, end_min, waiting_on, recurrence, series_id,
        completed_at, postponed_count, position, created_at, updated_at)
-     VALUES($id, $title, $notes, $sto, $ltc, $next, $goal, $project, $area, $parent, $status,
+     VALUES($id, $title, $notes, $sto, $ltc, $next, $project, $area, $parent, $status,
        $important, $urgent, $estimate, $due, $sched, $start, $end, $waiting, $rec, $series,
        $completed, $postponed, 0, $now, $now)`,
     {
@@ -157,7 +112,6 @@ function task(fields) {
       sto: fields.sto ?? null,
       ltc: fields.ltc ?? null,
       next: fields.next ?? null,
-      goal: fields.goal ?? null,
       project: fields.project ?? null,
       area: fields.area ?? null,
       parent: fields.parent ?? null,
@@ -244,7 +198,7 @@ task({
 task({
   title: "Weekly review",
   sto: "A clear picture of what moved and what stalled.",
-  ltc: "Keeps the strategy honest instead of drifting.",
+  ltc: "Keeps the plan honest instead of drifting.",
   rec: "weekly",
   estimate: 45,
   sched: iso(6),
@@ -255,7 +209,6 @@ task({
 
 task({
   title: "Train — strength session",
-  goal: habitGoalId,
   area: areas.health,
   rec: "weekly",
   estimate: 60,
@@ -296,9 +249,9 @@ run("INSERT OR IGNORE INTO day_focus(date, task_id, position) VALUES(?, ?, 0)", 
 
 const noteId = id();
 run(
-  `INSERT INTO notes(id, title, content, kind, date, project_id, goal_id, task_id, pinned, archived,
+  `INSERT INTO notes(id, title, content, kind, date, project_id, task_id, pinned, archived,
      created_at, updated_at)
-   VALUES(?, ?, ?, 'meeting', ?, ?, NULL, NULL, 1, 0, ?, ?)`,
+   VALUES(?, ?, ?, 'meeting', ?, ?, NULL, 1, 0, ?, ?)`,
   noteId,
   "Kickoff call with the first two testers",
   `## Context
@@ -310,12 +263,12 @@ Two people who plan their week on paper today.
 - They want the day plan to be defensible: "this is why I said no".
 
 ## Decisions
-- Alignment score stays on the dashboard.
-- Reviews pre-fill from real data, not a blank page.
+- The capacity ring stays on the dashboard.
+- The day plan explains itself, rather than showing a blank page.
 
 ## Action items
 - [ ] Add "why this task" to the daily view
-- [ ] Pre-fill the weekly review with completed tasks
+- [ ] Show completed tasks on the week's bars
 - [ ] Send both testers the landing page when it is live
 
 See also [[Positioning notes]].`,
@@ -323,13 +276,13 @@ See also [[Positioning notes]].`,
 );
 
 run(
-  `INSERT INTO notes(id, title, content, kind, date, project_id, goal_id, task_id, pinned, archived,
+  `INSERT INTO notes(id, title, content, kind, date, project_id, task_id, pinned, archived,
      created_at, updated_at)
-   VALUES(?, ?, ?, 'project', NULL, ?, NULL, NULL, 0, 0, ?, ?)`,
+   VALUES(?, ?, ?, 'project', NULL, ?, NULL, 0, 0, ?, ?)`,
   id(),
   "Positioning notes",
   `## The one sentence
-Growly turns a long-term strategy into what you do today — and shows you the link.
+Growly turns a plan into what you do today — and shows you the link.
 
 ## Not competing on
 - Prettiest calendar
@@ -337,9 +290,9 @@ Growly turns a long-term strategy into what you do today — and shows you the l
 
 ## Competing on
 - Every task states its short-term outcome and long-term contribution
-- Reviews that use real data`,
+- A day plan you can defend`,
   landingId, now, now,
 );
 
 console.log(`Seeded ${dbPath}`);
-console.log("Vision → goal → strategy → 2 projects → 13 tasks → 2 notes.");
+console.log("2 projects → 13 tasks → 2 notes.");

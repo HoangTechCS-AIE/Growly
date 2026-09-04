@@ -21,7 +21,6 @@ export type BlockType =
   | "code"
   | "divider"
   | "tasks"
-  | "goal"
   | "db";
 
 export interface Block {
@@ -54,12 +53,11 @@ export const BLOCK_LABEL: Record<BlockType, string> = {
   code: "Code",
   divider: "Divider",
   tasks: "Task list",
-  goal: "Goal progress",
   db: "Database",
 };
 
 /** Blocks that hold no caret: navigation and merging step over them. */
-export const EMBED_TYPES: BlockType[] = ["tasks", "goal", "db"];
+export const EMBED_TYPES: BlockType[] = ["tasks", "db"];
 
 export function isTextBlock(type: BlockType): boolean {
   return type !== "divider" && !EMBED_TYPES.includes(type);
@@ -98,7 +96,7 @@ export function emptyBlock(type: BlockType = "paragraph", indent = 0): Block {
 
 const FENCE = /^\s*```(\w+)?\s*$/;
 const HEADING = /^(#{1,6})\s+(.*)$/;
-const EMBED = /^::(tasks|goal|db)\b\s*(.*)$/;
+const EMBED = /^::(tasks|db)\b\s*(.*)$/;
 const DIVIDER = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 const CALLOUT = /^>\s*\[!([^\]]*)\]\s?(.*)$/;
 const QUOTE = /^>\s?(.*)$/;
@@ -253,7 +251,6 @@ export function serializeBlocks(blocks: Block[]): string {
         lines.push(`\`\`\`${block.lang ?? ""}`, ...block.text.split("\n"), "```");
         break;
       case "tasks":
-      case "goal":
       case "db":
         lines.push(`::${block.type}${block.text.trim() ? ` ${block.text.trim()}` : ""}`);
         break;

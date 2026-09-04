@@ -143,7 +143,7 @@ export function SettingsForm({ settings, areas }: { settings: Settings; areas: A
         </p>
       </Tile>
 
-      <Tile title="Life areas" hint="Work, Health, Learning — the buckets a goal or task belongs to">
+      <Tile title="Life areas" hint="Work, Health, Learning — the buckets a project or task belongs to">
         <ul className="flex flex-wrap gap-2">
           {areas.map((item) => (
             <li key={item.id} className="flex h-10 items-center gap-2 rounded-full bg-surface-3 pr-1.5 pl-3.5 text-sm font-semibold">

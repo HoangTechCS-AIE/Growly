@@ -1,33 +1,36 @@
 # Growly
 
-A local-first planner that keeps daily work attached to long-term strategy.
+A local-first planner that keeps daily work attached to the projects it belongs to.
 
 The point is not "calendar + notes + tasks". It is being able to answer, at any
-moment: **what I am doing today serves which long-term goal?**
+moment: **what I am doing today moves which project forward?**
 
 ```
-Vision (3–5 years)
-  └── Goal (6–12 months)
-        └── Strategy (1–12 weeks)
-              └── Project
-                    └── Task  ← carries a short-term outcome and a long-term contribution
+Area (Work, Health, Learning…)
+  └── Project
+        └── Task  ← carries a short-term outcome and a long-term contribution
 ```
 
-A task inherits its goal through its project and strategy, so linking a task to a
-project is enough for it to count toward the goal — and for the dashboard to show
-how much of this week actually ladders up to something.
+A task inherits its area through its project, so putting a task in a project is
+enough for it to count toward that project — and for the dashboard to show how
+much of this week actually belongs to one.
 
 ## Running it
 
 ```bash
 npm install
-npm run seed     # optional: a worked example (vision → goal → sprint → projects → tasks → notes)
+npm run seed     # optional: a worked example (2 projects → tasks → notes)
 npm run dev      # http://localhost:3000
 ```
 
+The first visit opens a setup screen: pick the username and password that will
+open Growly from then on. One account guards the whole app — there is no sharing
+and no per-user data. Sign out again from Settings.
+
 Everything lives in `data/growly.db` (SQLite through Node's built-in `node:sqlite`,
 so there is no native build step). Nothing leaves the machine — back it up by
-copying that file.
+copying that file. Beside it sits `data/.session-key`, the key that signs session
+cookies; delete it to sign every browser out, or set `GROWLY_SECRET` instead.
 
 ```bash
 npm run build && npm start   # production mode
@@ -42,17 +45,17 @@ database — the recipe is in the file's header.
 ## What is in it
 
 **Today** — the Big 3 for the day, today's time blocks against a capacity meter,
-overdue work, an inbox to triage, active goals with progress, time invested per
-goal, an alignment score (share of this week's work that serves a goal) and the
-drift list: repeatedly postponed tasks, stalled projects, idle goals.
+overdue work, an inbox to triage, active projects with progress, open tasks per
+area, a project focus score (share of this week's work that belongs to a project)
+and the drift list: repeatedly postponed tasks and stalled projects.
 
 **Tasks** — list grouped by date, Kanban board (Inbox / Planned / Doing / Waiting /
 Done, drag to move), Eisenhower matrix (drag to reclassify) and a 13-week project
 timeline with milestones. Every task holds a short-term outcome, a long-term
 contribution, a next action, a checklist, dependencies ("waits for"), tags, an
 estimate, logged time, recurrence and full history — and, once finished, the three
-closing questions: did the result match the expectation, did it move a goal, what
-is the next step.
+closing questions: did the result match the expectation, did it move the project,
+what is the next step.
 
 **Calendar** — day / week / month, full width. A task with a day but no hour sits
 in the **No time** row under the day headers, where you can see it without
@@ -66,11 +69,10 @@ strip above the grid — and only when there are any.
 **Notes** — Markdown with live preview, `[[wiki links]]` and backlinks, daily
 notes, templates (weekly review, brainstorm, planning, meeting, project), pin, tag
 and archive — plus **Line → task**: select lines and turn them into tasks that
-inherit the note's project and goal.
+inherit the note's project.
 
-**Review** — daily, weekly and monthly. Each review is pre-filled with real data
-(what was completed, what is still open, time per goal, alignment, drift), so the
-page is never blank, and answers are stored per period.
+**Projects** — one page per project: its tasks, its dated milestones (they show up
+on the calendar and the timeline too) and the notes filed under it.
 
 ## Interface
 
@@ -78,7 +80,7 @@ page is never blank, and answers are stored per period.
 warm neutral canvas, set in Plus Jakarta Sans on one type scale
 (12 · 13 · 15 · 17 · 20 · 24 · 30 · 36). Today leads with one deep-green
 spotlight tile — the block running now, the next one, or the first of the
-Big 3 — and every task row spells out the ladder it climbs: project → goal.
+Big 3 — and every task row spells out where it sits: project → area.
 Tags are kept to the ones that change what you do next (blocked, waiting,
 due); everything else lives on the task page. Icons are one stroke family of
 inline SVGs; there are no emoji or text glyphs standing in for controls.
@@ -98,7 +100,7 @@ classes. Every text pair clears WCAG AA and the `browser-test` script measures i
 
 **Phone and desktop.** From `lg` up an icon rail sits on the left; below it the
 app gets a bottom tab bar (Today, Tasks, Calendar, Notes, More — the More sheet
-holds Projects, Strategy, Review, Search and Settings; Escape closes it and
+holds Projects, Search and Settings; Escape closes it and
 focus returns to the button). The header is one thin strip, the board turns into a
 snap-scrolling carousel, the calendar opens on the day view, and the week grid and timeline scroll horizontally instead of
 crushing their columns. No page scrolls sideways on a 390px screen.
@@ -114,13 +116,16 @@ something there, or set the day, time and status on the task itself.
 ## Layout
 
 ```
-app/          routes: today (/), tasks, calendar, notes, projects, strategy, review, settings
+app/          routes: today (/), tasks, calendar, notes, projects, settings
 components/   UI — client components own interaction, pages stay server components
 deploy/       compose file, remote deploy script and Caddy block for the server
+proxy.ts      the gate: no valid session cookie, no app
 lib/
   schema.sql  the whole data model
   db.ts       lazy SQLite connection + helpers
-  queries.ts  every read (goal inheritance, alignment, capacity, drift)
+  auth.ts     accounts, password hashing, sessions
+  auth-token.ts  signs and reads the session cookie (also used by proxy.ts)
+  queries.ts  every read (area inheritance, project focus, capacity, drift)
   actions.ts  every write, as server actions
   quickadd.ts the quick-add parser — kept, but nothing in the UI calls it
   markdown.ts note renderer + templates
@@ -132,5 +137,5 @@ scripts/      seed.mjs, smoke-test.cjs, browser-test.mjs
 Google Calendar sync, collaboration, a native mobile app, notifications, AI
 assistance. Touch drag-and-drop is not implemented either — on a phone, use the
 click-to-plan and task fields instead.
-The first thing worth proving is whether this actually turns strategy into daily
+The first thing worth proving is whether this actually turns a plan into daily
 action; everything else can wait for that answer.

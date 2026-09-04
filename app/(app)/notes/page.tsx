@@ -5,6 +5,7 @@ import { EmptyState, PageHeader, SegLinks, Tile } from "@/components/ui";
 import { listNotes, listTags } from "@/lib/queries";
 import { NOTE_KIND_LABEL, type NoteKind } from "@/lib/types";
 import { cn } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ function preview(content: string) {
 }
 
 export default async function NotesPage({ searchParams }: PageProps<"/notes">) {
+  await requireUser();
   const params = await searchParams;
   const pick = (key: string) => {
     const value = params[key];

@@ -3,10 +3,12 @@ import { NotePage } from "@/components/note-page";
 import {
   getBacklinks, getNote, getNoteAncestors, getOutlinks, listChildNotes, listNotes, listProjects,
 } from "@/lib/queries";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: PageProps<"/notes/[id]">) {
+  await requireUser();
   const { id } = await params;
   const note = getNote(id);
   if (!note) notFound();

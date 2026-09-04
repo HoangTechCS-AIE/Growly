@@ -12,10 +12,12 @@ import {
 } from "@/lib/queries";
 import { STATUS_LABEL } from "@/lib/types";
 import { cn, formatClock, relativeDay, todayISO } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function TaskDetailPage({ params }: PageProps<"/tasks/[id]">) {
+  await requireUser();
   const { id } = await params;
   const today = todayISO();
   const task = getTask(id, today);
@@ -62,7 +64,6 @@ export default async function TaskDetailPage({ params }: PageProps<"/tasks/[id]"
           <Ladder
             project={task.project_title}
             projectColor={task.project_color}
-            goal={task.goal_title}
             area={task.area_name}
             className="mt-2 text-sm"
           />

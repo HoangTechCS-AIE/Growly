@@ -4,11 +4,12 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  createNote, createProject, createTask, toggleTaskDone, updateProject,
+  createMilestone, createNote, createProject, createTask, toggleMilestone,
+  toggleTaskDone, updateProject,
 } from "@/lib/actions";
-import type { NoteView, ProjectStatus, ProjectView, TaskView } from "@/lib/types";
+import type { Milestone, NoteView, ProjectStatus, ProjectView, TaskView } from "@/lib/types";
 import { chipTone, cn, formatDuration, pct, relativeDay } from "@/lib/util";
-import { IconCheck, IconNote, IconPlus, IconTask } from "./icons";
+import { IconCheck, IconDiamond, IconNote, IconPlus, IconTask } from "./icons";
 import { Meter, Tile } from "./ui";
 
 const STATUSES: ProjectStatus[] = ["planned", "active", "paused", "done"];
@@ -211,9 +212,6 @@ export function ProjectHeader({ project }: { project: ProjectView }) {
             className="input input-sm w-auto"
           />
         </label>
-        {project.goal_title && (
-          <span className="tag tag-accent">{project.goal_title}</span>
-        )}
         <button
           type="button"
           className="btn btn-sm btn-ghost ml-auto"
@@ -401,6 +399,97 @@ export function ProjectNotes({ project, notes }: { project: ProjectView; notes: 
           ))}
         </ul>
       )}
+    </Tile>
+  );
+}
+
+/** The project's dated checkpoints — they also show up on the calendar and the
+    timeline, so this is where they get created and ticked off. */
+export function ProjectMilestones({
+  project,
+  milestones,
+}: {
+  project: ProjectView;
+  milestones: Milestone[];
+}) {
+  const router = useRouter();
+  const [form, setForm] = useState({ title: "", date: "" });
+  const [pending, startTransition] = useTransition();
+
+  const run = (fn: () => Promise<unknown>, after?: () => void) =>
+    startTransition(async () => {
+      await fn();
+      after?.();
+      router.refresh();
+    });
+
+  const add = () => {
+    const clean = form.title.trim();
+    if (!clean) return;
+    run(() => createMilestone(project.id, clean, form.date || null), () =>
+      setForm({ title: "", date: "" }),
+    );
+  };
+
+  return (
+    <Tile
+      title="Milestones"
+      hint="Checkpoints with a date — they appear on the calendar too"
+      action={<span className="tag tabular-nums">{milestones.length}</span>}
+    >
+      {milestones.length > 0 && (
+        <ul className="flex flex-col">
+          {milestones.map((milestone) => (
+            <li key={milestone.id} className="list-row">
+              <button
+                type="button"
+                onClick={() => run(() => toggleMilestone(milestone.id))}
+                className={cn(
+                  "flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md transition hover:bg-surface-3",
+                  milestone.done === 1 ? "text-accent" : "text-warn",
+                )}
+                title={milestone.done === 1 ? "Mark as not reached" : "Mark as reached"}
+                aria-label={milestone.done === 1 ? "Mark milestone as not reached" : "Mark milestone as reached"}
+                aria-pressed={milestone.done === 1}
+              >
+                <IconDiamond className="h-3.5 w-3.5" fill={milestone.done === 1 ? "currentColor" : "none"} />
+              </button>
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-base font-semibold",
+                  milestone.done === 1 && "text-muted line-through",
+                )}
+              >
+                {milestone.title}
+              </span>
+              <span className="text-xs tabular-nums text-muted">{milestone.date ?? ""}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          className="input input-sm"
+          placeholder="Add a milestone and press Enter"
+          aria-label="New milestone"
+          value={form.title}
+          onChange={(event) => setForm({ ...form, title: event.target.value })}
+          onKeyDown={(event) => event.key === "Enter" && add()}
+        />
+        <input
+          type="date"
+          className="input input-sm w-40"
+          aria-label="Milestone date"
+          value={form.date}
+          onChange={(event) => setForm({ ...form, date: event.target.value })}
+        />
+        {form.title.trim() && (
+          <button type="button" className="btn btn-sm btn-primary" disabled={pending} onClick={add}>
+            Add
+          </button>
+        )}
+      </div>
     </Tile>
   );
 }

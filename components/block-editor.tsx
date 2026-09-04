@@ -10,7 +10,7 @@ import {
   filterSlash, isTextBlock, matchShortcut, parseBlocks, parseParams, renderInline, serializeBlocks,
   type Block, type BlockType, type SlashCommand,
 } from "@/lib/blocks";
-import { GoalEmbed, TasksEmbed, type EmbedContext } from "./embed-block";
+import { TasksEmbed, type EmbedContext } from "./embed-block";
 import { DatabaseBlock } from "./database-block";
 import { Popover } from "./popover";
 import { IconChevronRight, IconGrip, IconPlus, IconCheck } from "./icons";
@@ -214,7 +214,7 @@ export interface BlockEditorProps {
   onBlockToTask: (text: string) => Promise<void>;
   /** Creates a database for the `/Database` command and returns its id. */
   onCreateDatabase: () => Promise<string | null>;
-  /** Project, goal and pickers that `::tasks` / `::goal` blocks inherit. */
+  /** The project a `::tasks` block inherits when it names no filter itself. */
   embedContext: EmbedContext;
   storageKey: string;
 }
@@ -1293,13 +1293,6 @@ export function BlockEditor({
               />
             ) : block.type === "db" ? (
               <DatabaseBlock databaseId={parseParams(block.text).id ?? ""} selected={isSelected} />
-            ) : block.type === "goal" ? (
-              <GoalEmbed
-                params={block.text}
-                context={embedContext}
-                selected={isSelected}
-                onParams={(next) => patch(block.id, { text: next })}
-              />
             ) : (
               <>
                 {block.type === "bullet" && <span className="nb-marker nb-bullet">•</span>}

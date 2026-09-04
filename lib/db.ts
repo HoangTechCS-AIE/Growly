@@ -27,8 +27,21 @@ const ADDED_COLUMNS: { table: string; column: string; definition: string }[] = [
   { table: "notes", column: "position", definition: "INTEGER NOT NULL DEFAULT 0" },
 ];
 
+/** Columns and tables the vision → goal → strategy layer and the review page
+    left behind. `CREATE TABLE IF NOT EXISTS` cannot remove them, so an older
+    database has them taken out one by one. Order matters: nothing may still
+    reference a table by the time it is dropped. */
+const DROPPED_COLUMNS: { table: string; column: string }[] = [
+  { table: "tasks", column: "goal_id" },
+  { table: "projects", column: "goal_id" },
+  { table: "projects", column: "strategy_id" },
+  { table: "notes", column: "goal_id" },
+];
+
+const DROPPED_TABLES = ["strategies", "goals", "visions", "reviews"];
+
 /** Bump to have every row re-indexed, e.g. after a tokenizer change. */
-const SEARCH_INDEX_VERSION = "2";
+const SEARCH_INDEX_VERSION = "3";
 
 function migrate(db: DatabaseSync) {
   for (const { table, column, definition } of ADDED_COLUMNS) {
@@ -37,6 +50,17 @@ function migrate(db: DatabaseSync) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
   db.exec("CREATE INDEX IF NOT EXISTS idx_notes_parent ON notes(parent_id)");
+
+  // A goal's triggers and index have to go before its column can: SQLite will
+  // not drop a column the rest of the schema still names.
+  for (const suffix of ["ai", "au", "ad"]) db.exec(`DROP TRIGGER IF EXISTS goals_search_${suffix}`);
+  db.exec("DROP INDEX IF EXISTS idx_tasks_goal");
+  for (const { table, column } of DROPPED_COLUMNS) {
+    const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!columns.some((c) => c.name === column)) continue;
+    db.exec(`ALTER TABLE ${table} DROP COLUMN ${column}`);
+  }
+  for (const table of DROPPED_TABLES) db.exec(`DROP TABLE IF EXISTS ${table}`);
 
   // Triggers only catch rows written from now on; anything already in the
   // database has to be swept in once.
@@ -60,9 +84,6 @@ function migrate(db: DatabaseSync) {
     INSERT INTO search_index(kind, ref_id, title, body, fold)
       SELECT 'project', id, title, COALESCE(description, ''),
              ${folded("title", "COALESCE(description, '')")} FROM projects;
-    INSERT INTO search_index(kind, ref_id, title, body, fold)
-      SELECT 'goal', id, title, COALESCE(description, ''),
-             ${folded("title", "COALESCE(description, '')")} FROM goals;
   `);
   db.prepare("INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)").run(
     "search_index_version",

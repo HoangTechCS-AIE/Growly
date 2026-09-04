@@ -1,10 +1,12 @@
 import { NewProjectButton, ProjectCard } from "@/components/project-panels";
 import { EmptyState, PageHeader, Tile } from "@/components/ui";
 import { listProjects } from "@/lib/queries";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectsPage() {
+  await requireUser();
   const projects = listProjects();
   const active = projects.filter((project) => project.status === "active");
   const rest = projects.filter((project) => project.status !== "active");

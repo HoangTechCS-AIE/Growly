@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { IconChevronLeft } from "@/components/icons";
-import { ProjectHeader, ProjectNotes, ProjectTasks } from "@/components/project-panels";
-import { getProject, listNotes, listTasks } from "@/lib/queries";
+import {
+  ProjectHeader, ProjectMilestones, ProjectNotes, ProjectTasks,
+} from "@/components/project-panels";
+import { getProject, listMilestones, listNotes, listTasks } from "@/lib/queries";
 import { todayISO } from "@/lib/util";
+import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProjectPage({ params }: PageProps<"/projects/[id]">) {
+  await requireUser();
   const { id } = await params;
   const project = getProject(id);
   if (!project) notFound();
@@ -15,6 +19,7 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
   const today = todayISO();
   const tasks = listTasks({ projectId: id, includeDone: true, parentId: null }, today);
   const notes = listNotes({ projectId: id });
+  const milestones = listMilestones({ projectId: id });
 
   return (
     <div className="mx-auto max-w-[1200px]">
@@ -31,7 +36,8 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[id]"
         <div className="lg:col-span-7">
           <ProjectTasks project={project} tasks={tasks} today={today} />
         </div>
-        <div className="lg:col-span-5">
+        <div className="flex flex-col gap-4 lg:col-span-5">
+          <ProjectMilestones project={project} milestones={milestones} />
           <ProjectNotes project={project} notes={notes} />
         </div>
       </div>

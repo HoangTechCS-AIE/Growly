@@ -5,6 +5,9 @@
  * the mobile More sheet, the
  * theme toggle and colour contrast.
  *
+ * It signs itself in first — on a throwaway database that means creating the
+ * account the setup screen asks for.
+ *
  * It needs Chrome and puppeteer-core, and a server pointed at a throwaway
  * database so your real one is never touched:
  *
@@ -47,6 +50,23 @@ function watch(page) {
 console.log("\nGrowly browser test\n\nInteractions");
 
 const page = watch(await browser.newPage());
+
+/* ---------------------------------------------------------------- sign in -- */
+// Every route sits behind the login. A throwaway database has no account yet,
+// so the first visit sets one; a re-used database just signs in.
+const ACCOUNT = { username: "uitest", password: "growly-uitest" };
+await page.goto(BASE, { waitUntil: "networkidle2" });
+if (!new URL(page.url()).pathname.startsWith("/tasks")) {
+  const onSetup = page.url().includes("/setup");
+  await page.type("#username", ACCOUNT.username);
+  await page.type("#password", ACCOUNT.password);
+  if (onSetup) await page.type("#confirm", ACCOUNT.password);
+  await Promise.all([
+    page.waitForNavigation({ waitUntil: "networkidle2" }),
+    page.click('button[type="submit"]'),
+  ]);
+}
+expect(new URL(page.url()).pathname === "/", "signing in opens the app");
 
 /* ---------------------------------------------------------- create a task -- */
 // Quick add is gone; the New task form is the way in now.
@@ -689,7 +709,6 @@ expect(
   !shown.includes("Short-term outcome") && !shown.includes("Long-term contribution"),
   "the short-term and long-term fields are gone from the task form",
 );
-expect(!shown.includes("Goal"), "the Goal picker is gone from the task form");
 expect(
   !shown.includes("Repeat") && !shown.includes("Waiting on"),
   "rarely-used fields start folded away",
@@ -718,19 +737,12 @@ expect(
   "the slim form still creates a task",
 );
 
-/* ------------------------------------------------ goals are out of the way */
+/* --------------------------------------------------- projects lead the app */
 await page.goto(BASE, { waitUntil: "networkidle2" });
 await wait(500);
 const todayText = (await page.evaluate(() => document.body.innerText)).toLowerCase();
 expect(todayText.includes("active projects"), "Today reports on projects");
-expect(!todayText.includes("alignment"), "the goal-alignment tile is gone from Today");
-
-await page.goto(`${BASE}/review?kind=weekly`, { waitUntil: "networkidle2" });
-await wait(500);
-expect(
-  (await page.evaluate(() => document.body.innerText)).toLowerCase().includes("project progress"),
-  "the weekly review reports project progress",
-);
+expect(!todayText.includes("alignment"), "no alignment tile on Today");
 
 /* ------------------------------------------------------- morning planning -- */
 await page.goto(BASE, { waitUntil: "networkidle2" });

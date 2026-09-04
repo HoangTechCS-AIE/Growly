@@ -3,8 +3,10 @@
 #
 #   /root/supabase/docker/volumes/proxy/caddy/Caddyfile
 #
-# Growly has no login of its own, so this basic_auth is the only thing between
-# the public internet and the database. Generate the hash on the server with:
+# Growly asks for its own username and password now, so this basic_auth is a
+# second lock rather than the only one — keep it and the browser asks twice, or
+# delete the block and let the app's login stand alone. Generate the hash on the
+# server with:
 #
 #   docker exec -it supabase-caddy caddy hash-password
 #
