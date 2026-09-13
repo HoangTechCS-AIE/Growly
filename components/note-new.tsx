@@ -7,7 +7,7 @@ import { NOTE_TEMPLATES } from "@/lib/markdown";
 import { todayISO } from "@/lib/util";
 import { IconChevronDown, IconPlus } from "./icons";
 
-export function NewNoteButtons({ projectId, goalId }: { projectId?: string; goalId?: string }) {
+export function NewNoteButtons({ projectId }: { projectId?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -38,7 +38,6 @@ export function NewNoteButtons({ projectId, goalId }: { projectId?: string; goal
         content,
         kind,
         project_id: projectId ?? null,
-        goal_id: goalId ?? null,
       });
       router.push(`/notes/${id}`);
     });

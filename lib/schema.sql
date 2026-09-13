@@ -11,51 +11,9 @@ CREATE TABLE IF NOT EXISTS areas (
   created_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS visions (
-  id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  description TEXT,
-  horizon TEXT,
-  position INTEGER NOT NULL DEFAULT 0,
-  archived INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS goals (
-  id TEXT PRIMARY KEY,
-  vision_id TEXT REFERENCES visions(id) ON DELETE SET NULL,
-  area_id   TEXT REFERENCES areas(id)   ON DELETE SET NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  metric TEXT,
-  start_date TEXT,
-  target_date TEXT,
-  status TEXT NOT NULL DEFAULT 'active',
-  position INTEGER NOT NULL DEFAULT 0,
-  archived INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS strategies (
-  id TEXT PRIMARY KEY,
-  goal_id TEXT REFERENCES goals(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  start_date TEXT,
-  end_date TEXT,
-  status TEXT NOT NULL DEFAULT 'active',
-  position INTEGER NOT NULL DEFAULT 0,
-  archived INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
-  strategy_id TEXT REFERENCES strategies(id) ON DELETE SET NULL,
-  goal_id     TEXT REFERENCES goals(id)      ON DELETE SET NULL,
-  area_id     TEXT REFERENCES areas(id)      ON DELETE SET NULL,
+  area_id TEXT REFERENCES areas(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT,
   status TEXT NOT NULL DEFAULT 'active',
@@ -84,7 +42,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   short_term_outcome TEXT,
   long_term_contribution TEXT,
   next_action TEXT,
-  goal_id    TEXT REFERENCES goals(id)    ON DELETE SET NULL,
   project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
   area_id    TEXT REFERENCES areas(id)    ON DELETE SET NULL,
   parent_id  TEXT REFERENCES tasks(id)    ON DELETE CASCADE,
@@ -111,7 +68,6 @@ CREATE INDEX IF NOT EXISTS idx_tasks_status    ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_scheduled ON tasks(scheduled_date);
 CREATE INDEX IF NOT EXISTS idx_tasks_due       ON tasks(due_date);
 CREATE INDEX IF NOT EXISTS idx_tasks_project   ON tasks(project_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_goal      ON tasks(goal_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_parent    ON tasks(parent_id);
 
 CREATE TABLE IF NOT EXISTS task_deps (
@@ -144,7 +100,6 @@ CREATE TABLE IF NOT EXISTS notes (
   cover TEXT,
   position INTEGER NOT NULL DEFAULT 0,
   project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
-  goal_id    TEXT REFERENCES goals(id)    ON DELETE SET NULL,
   task_id    TEXT REFERENCES tasks(id)    ON DELETE SET NULL,
   pinned   INTEGER NOT NULL DEFAULT 0,
   archived INTEGER NOT NULL DEFAULT 0,
@@ -201,16 +156,6 @@ CREATE TABLE IF NOT EXISTS day_focus (
   PRIMARY KEY (date, task_id)
 );
 
-CREATE TABLE IF NOT EXISTS reviews (
-  id TEXT PRIMARY KEY,
-  kind TEXT NOT NULL,
-  period_key TEXT NOT NULL,
-  data TEXT NOT NULL DEFAULT '{}',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  UNIQUE (kind, period_key)
-);
-
 /* ---------------------------------------------------------------- databases --
    A Notion-style database lives inside a note as a `::db id=…` block. Property
    definitions and row values are JSON: they are read and written whole, and a
@@ -242,7 +187,7 @@ CREATE TABLE IF NOT EXISTS database_rows (
 CREATE INDEX IF NOT EXISTS idx_database_rows_db ON database_rows(database_id);
 
 /* ------------------------------------------------------------ search index --
-   One FTS5 table covers notes, tasks, projects and goals so a single query can
+   One FTS5 table covers notes, tasks and projects so a single query can
    rank across all of them. `remove_diacritics 2` folds Vietnamese tone marks,
    but not "đ", which Unicode treats as its own letter rather than d + a mark —
    hence the extra `fold` column holding a đ→d copy of the text. Matching hits
@@ -300,21 +245,6 @@ CREATE TRIGGER IF NOT EXISTS projects_search_au AFTER UPDATE ON projects BEGIN
 END;
 CREATE TRIGGER IF NOT EXISTS projects_search_ad AFTER DELETE ON projects BEGIN
   DELETE FROM search_index WHERE kind = 'project' AND ref_id = old.id;
-END;
-
-CREATE TRIGGER IF NOT EXISTS goals_search_ai AFTER INSERT ON goals BEGIN
-  INSERT INTO search_index(kind, ref_id, title, body, fold)
-  VALUES('goal', new.id, new.title, COALESCE(new.description, ''),
-         replace(replace(new.title || ' ' || COALESCE(new.description, ''), 'đ', 'd'), 'Đ', 'D'));
-END;
-CREATE TRIGGER IF NOT EXISTS goals_search_au AFTER UPDATE ON goals BEGIN
-  DELETE FROM search_index WHERE kind = 'goal' AND ref_id = old.id;
-  INSERT INTO search_index(kind, ref_id, title, body, fold)
-  VALUES('goal', new.id, new.title, COALESCE(new.description, ''),
-         replace(replace(new.title || ' ' || COALESCE(new.description, ''), 'đ', 'd'), 'Đ', 'D'));
-END;
-CREATE TRIGGER IF NOT EXISTS goals_search_ad AFTER DELETE ON goals BEGIN
-  DELETE FROM search_index WHERE kind = 'goal' AND ref_id = old.id;
 END;
 
 /* One account guards the whole app; the data itself is not split per user. */

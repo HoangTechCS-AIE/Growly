@@ -74,7 +74,7 @@ export function UnscheduledStrip({ tasks }: { tasks: TaskView[] }) {
             }}
             className="flex h-9 shrink-0 cursor-grab items-center gap-2 rounded-full border border-line bg-surface px-3 transition hover:border-line-strong active:cursor-grabbing"
             title={[
-              task.goal_title ? `Goal: ${task.goal_title}` : "Not linked to a goal",
+              task.project_title ? `Project: ${task.project_title}` : "Not in a project",
               task.due_date ? `Due ${relativeDay(task.due_date, today)}` : null,
             ]
               .filter(Boolean)

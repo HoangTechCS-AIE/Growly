@@ -5,8 +5,9 @@ export const dynamic = "force-dynamic";
 
 export default function NotesLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto grid max-w-[1500px] grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-      <aside className="hidden lg:block">
+    <div className="mx-auto grid h-full max-w-[1500px] grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+      {/* The tree stays as tall as its own list; only the page canvas stretches. */}
+      <aside className="hidden self-start lg:block">
         <NoteTree items={listNoteTree()} />
       </aside>
       <div className="min-w-0">{children}</div>

@@ -127,7 +127,6 @@ export function TaskRow({
           <Ladder
             project={task.project_title}
             projectColor={task.project_color}
-            goal={task.goal_title}
             area={task.area_name}
           />
           {task.estimate_minutes ? (

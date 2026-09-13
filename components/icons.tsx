@@ -57,20 +57,6 @@ export const IconTarget = (p: IconProps) => (
   </Base>
 );
 
-export const IconLayers = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M12 3l9 5-9 5-9-5z" />
-    <path d="M3 13l9 5 9-5" />
-  </Base>
-);
-
-export const IconReview = (p: IconProps) => (
-  <Base {...p}>
-    <path d="M20 12a8 8 0 1 1-2.34-5.66" />
-    <path d="M20 4v5h-5" />
-  </Base>
-);
-
 export const IconSettings = (p: IconProps) => (
   <Base {...p}>
     <path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1" />

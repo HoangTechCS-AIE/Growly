@@ -141,7 +141,7 @@ export function MonthGrid({
                         "flex items-center gap-1.5 truncate rounded-md px-1 py-0.5 text-xs font-medium transition hover:bg-surface-3",
                         task.status === "done" && "text-muted line-through",
                       )}
-                      title={task.goal_title ? `${task.title} · ${task.goal_title}` : task.title}
+                      title={task.project_title ? `${task.title} · ${task.project_title}` : task.title}
                     >
                       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotTone(task.project_color))} />
                       <span className="truncate">{task.title}</span>

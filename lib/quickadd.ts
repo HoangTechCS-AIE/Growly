@@ -1,7 +1,7 @@
 "use server";
 
 import { createTask } from "./actions";
-import { listAreas, listGoals, listProjects } from "./queries";
+import { listAreas, listProjects } from "./queries";
 import { addDaysISO, parseDuration, todayISO } from "./util";
 
 const DAY_WORDS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -43,7 +43,7 @@ function takeMatches(text: string, pattern: RegExp): { text: string; values: str
 
 /**
  * Quick-add syntax:
- *   @project  ~goal  /area  #tag  !urgent  *important
+ *   @project  /area  #tag  !urgent  *important
  *   today | tmr | mon..sun | 2026-08-20 | 20/8      -> scheduled day
  *   due:tomorrow                                     -> deadline
  *   14:00                                            -> start of the time block
@@ -56,13 +56,10 @@ export async function quickAdd(text: string, defaults: { scheduled_date?: string
   if (!rest.trim()) return null;
 
   const projects = listProjects();
-  const goals = listGoals();
   const areas = listAreas();
 
   const project = takeMatches(rest, /(^|\s)@(?:"([^"]+)"|(\S+))/g);
   rest = project.text;
-  const goal = takeMatches(rest, /(^|\s)~(?:"([^"]+)"|(\S+))/g);
-  rest = goal.text;
   const area = takeMatches(rest, /(^|\s)\/(?:"([^"]+)"|(\S+))/g);
   rest = area.text;
   const tags = takeMatches(rest, /(^|\s)#(?:"([^"]+)"|(\S+))/g);
@@ -106,13 +103,11 @@ export async function quickAdd(text: string, defaults: { scheduled_date?: string
   };
 
   const matchedProject = findByName(projects, project.values[0]);
-  const matchedGoal = findByName(goals, goal.values[0]);
   const matchedArea = findByName(areas, area.values[0]);
 
   // Unmatched references stay in the title so nothing is silently lost.
   const leftovers = [
     !matchedProject && project.values[0] ? `@${project.values[0]}` : "",
-    !matchedGoal && goal.values[0] ? `~${goal.values[0]}` : "",
     !matchedArea && area.values[0] ? `/${area.values[0]}` : "",
   ].filter(Boolean);
 
@@ -132,7 +127,6 @@ export async function quickAdd(text: string, defaults: { scheduled_date?: string
   return createTask({
     title,
     project_id: matchedProject?.id ?? null,
-    goal_id: matchedGoal?.id ?? null,
     area_id: matchedArea?.id ?? null,
     tags: tags.values,
     important,

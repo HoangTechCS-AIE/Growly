@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Growly",
-  description: "Turn long-term strategy into daily action.",
+  description: "Turn plans into daily action.",
 };
 
 export const viewport: Viewport = {

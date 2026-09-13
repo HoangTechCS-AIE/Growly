@@ -8,7 +8,7 @@ import { generatePost, type GenerateResult } from "./content/generate";
 import { lintPost } from "./content/lint";
 import type { Brief } from "./content/prompt";
 import { all, get, run, tx } from "./db";
-import { getGoal, listNotes, listTasks, searchAll, type SearchHit } from "./queries";
+import { listNotes, listTasks, searchAll, type SearchHit } from "./queries";
 import { TASK_STATUSES, type Note, type Task, type TaskStatus } from "./types";
 import { addDaysISO, newId, nowISO, todayISO } from "./util";
 
@@ -74,7 +74,6 @@ export interface TaskInput {
   short_term_outcome?: string | null;
   long_term_contribution?: string | null;
   next_action?: string | null;
-  goal_id?: string | null;
   project_id?: string | null;
   area_id?: string | null;
   parent_id?: string | null;
@@ -97,10 +96,10 @@ export async function createTask(input: TaskInput): Promise<string> {
   tx(() => {
     run(
       `INSERT INTO tasks(id, title, notes, short_term_outcome, long_term_contribution, next_action,
-         goal_id, project_id, area_id, parent_id, status, important, urgent, estimate_minutes,
+         project_id, area_id, parent_id, status, important, urgent, estimate_minutes,
          due_date, scheduled_date, start_min, end_min, waiting_on, recurrence, series_id,
          created_at, updated_at)
-       VALUES($id, $title, $notes, $sto, $ltc, $next, $goal, $project, $area, $parent, $status,
+       VALUES($id, $title, $notes, $sto, $ltc, $next, $project, $area, $parent, $status,
          $important, $urgent, $estimate, $due, $sched, $start, $end, $waiting, $rec, $series,
          $now, $now)`,
       {
@@ -110,7 +109,6 @@ export async function createTask(input: TaskInput): Promise<string> {
         sto: input.short_term_outcome ?? null,
         ltc: input.long_term_contribution ?? null,
         next: input.next_action ?? null,
-        goal: input.goal_id || null,
         project: input.project_id || null,
         area: input.area_id || null,
         parent: input.parent_id || null,
@@ -149,7 +147,6 @@ export async function updateTask(id: string, patch: Partial<TaskInput>): Promise
     short_term_outcome: "short_term_outcome",
     long_term_contribution: "long_term_contribution",
     next_action: "next_action",
-    goal_id: "goal_id",
     project_id: "project_id",
     area_id: "area_id",
     parent_id: "parent_id",
@@ -219,11 +216,11 @@ export async function setTaskStatus(id: string, status: TaskStatus): Promise<voi
         const nextId = newId();
         run(
           `INSERT INTO tasks(id, title, notes, short_term_outcome, long_term_contribution,
-             next_action, goal_id, project_id, area_id, parent_id, status, important, urgent,
+             next_action, project_id, area_id, parent_id, status, important, urgent,
              estimate_minutes, due_date, scheduled_date, start_min, end_min, waiting_on,
              recurrence, recurrence_until, series_id, created_at, updated_at)
            SELECT $newId, title, notes, short_term_outcome, long_term_contribution, next_action,
-             goal_id, project_id, area_id, parent_id, 'planned', important, urgent,
+             project_id, area_id, parent_id, 'planned', important, urgent,
              estimate_minutes,
              CASE WHEN due_date IS NOT NULL THEN $nextDate ELSE NULL END,
              CASE WHEN scheduled_date IS NOT NULL THEN $nextDate ELSE NULL END,
@@ -320,7 +317,6 @@ export async function addSubtask(parentId: string, title: string): Promise<void>
     title,
     parent_id: parentId,
     project_id: parent.project_id,
-    goal_id: parent.goal_id,
     area_id: parent.area_id,
     status: "planned",
   });
@@ -405,137 +401,10 @@ export async function toggleFocus(date: string, taskId: string): Promise<void> {
   touch();
 }
 
-/* ------------------------------------------------------------------ strategy */
-
-export async function createVision(input: { title: string; description?: string; horizon?: string }) {
-  const id = newId();
-  run(
-    "INSERT INTO visions(id, title, description, horizon, position, created_at) VALUES(?, ?, ?, ?, ?, ?)",
-    id,
-    input.title.trim(),
-    input.description ?? null,
-    input.horizon ?? null,
-    0,
-    nowISO(),
-  );
-  touch();
-  return id;
-}
-
-export async function updateVision(id: string, patch: { title?: string; description?: string; horizon?: string; archived?: boolean }) {
-  const sets: string[] = [];
-  const values: unknown[] = [];
-  if (patch.title !== undefined) (sets.push("title = ?"), values.push(patch.title));
-  if (patch.description !== undefined) (sets.push("description = ?"), values.push(patch.description || null));
-  if (patch.horizon !== undefined) (sets.push("horizon = ?"), values.push(patch.horizon || null));
-  if (patch.archived !== undefined) (sets.push("archived = ?"), values.push(patch.archived ? 1 : 0));
-  if (!sets.length) return;
-  run(`UPDATE visions SET ${sets.join(", ")} WHERE id = ?`, ...values, id);
-  touch();
-}
-
-export interface GoalInput {
-  title: string;
-  vision_id?: string | null;
-  area_id?: string | null;
-  description?: string | null;
-  metric?: string | null;
-  start_date?: string | null;
-  target_date?: string | null;
-  status?: string;
-}
-
-export async function createGoal(input: GoalInput) {
-  const id = newId();
-  const now = nowISO();
-  run(
-    `INSERT INTO goals(id, vision_id, area_id, title, description, metric, start_date, target_date,
-       status, position, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-    id,
-    input.vision_id || null,
-    input.area_id || null,
-    input.title.trim(),
-    input.description || null,
-    input.metric || null,
-    input.start_date || null,
-    input.target_date || null,
-    input.status ?? "active",
-    now,
-    now,
-  );
-  touch();
-  return id;
-}
-
-export async function updateGoal(id: string, patch: Partial<GoalInput> & { archived?: boolean }) {
-  const columns = ["vision_id", "area_id", "title", "description", "metric", "start_date", "target_date", "status"];
-  const sets: string[] = [];
-  const values: unknown[] = [];
-  for (const column of columns) {
-    if (column in patch) {
-      sets.push(`${column} = ?`);
-      const value = (patch as Record<string, unknown>)[column];
-      values.push(value === "" ? null : value);
-    }
-  }
-  if (patch.archived !== undefined) (sets.push("archived = ?"), values.push(patch.archived ? 1 : 0));
-  if (!sets.length) return;
-  run(`UPDATE goals SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`, ...values, nowISO(), id);
-  touch();
-}
-
-export interface StrategyInput {
-  title: string;
-  goal_id?: string | null;
-  description?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  status?: string;
-}
-
-export async function createStrategy(input: StrategyInput) {
-  const id = newId();
-  const now = nowISO();
-  run(
-    `INSERT INTO strategies(id, goal_id, title, description, start_date, end_date, status,
-       position, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
-    id,
-    input.goal_id || null,
-    input.title.trim(),
-    input.description || null,
-    input.start_date || null,
-    input.end_date || null,
-    input.status ?? "active",
-    now,
-    now,
-  );
-  touch();
-  return id;
-}
-
-export async function updateStrategy(id: string, patch: Partial<StrategyInput> & { archived?: boolean }) {
-  const columns = ["goal_id", "title", "description", "start_date", "end_date", "status"];
-  const sets: string[] = [];
-  const values: unknown[] = [];
-  for (const column of columns) {
-    if (column in patch) {
-      sets.push(`${column} = ?`);
-      const value = (patch as Record<string, unknown>)[column];
-      values.push(value === "" ? null : value);
-    }
-  }
-  if (patch.archived !== undefined) (sets.push("archived = ?"), values.push(patch.archived ? 1 : 0));
-  if (!sets.length) return;
-  run(`UPDATE strategies SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`, ...values, nowISO(), id);
-  touch();
-}
+/* ------------------------------------------------------------------ projects */
 
 export interface ProjectInput {
   title: string;
-  strategy_id?: string | null;
-  goal_id?: string | null;
   area_id?: string | null;
   description?: string | null;
   status?: string;
@@ -548,12 +417,10 @@ export async function createProject(input: ProjectInput) {
   const id = newId();
   const now = nowISO();
   run(
-    `INSERT INTO projects(id, strategy_id, goal_id, area_id, title, description, status,
+    `INSERT INTO projects(id, area_id, title, description, status,
        start_date, due_date, color, position, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
     id,
-    input.strategy_id || null,
-    input.goal_id || null,
     input.area_id || null,
     input.title.trim(),
     input.description || null,
@@ -569,7 +436,7 @@ export async function createProject(input: ProjectInput) {
 }
 
 export async function updateProject(id: string, patch: Partial<ProjectInput> & { archived?: boolean }) {
-  const columns = ["strategy_id", "goal_id", "area_id", "title", "description", "status", "start_date", "due_date", "color"];
+  const columns = ["area_id", "title", "description", "status", "start_date", "due_date", "color"];
   const sets: string[] = [];
   const values: unknown[] = [];
   for (const column of columns) {
@@ -637,7 +504,6 @@ export interface NoteInput {
   cover?: string | null;
   position?: number;
   project_id?: string | null;
-  goal_id?: string | null;
   task_id?: string | null;
   tags?: string[];
 }
@@ -659,8 +525,8 @@ export async function createNote(input: NoteInput): Promise<string> {
   tx(() => {
     run(
       `INSERT INTO notes(id, title, content, kind, date, parent_id, icon, cover, position,
-         project_id, goal_id, task_id, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         project_id, task_id, created_at, updated_at)
+       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.title?.trim() || "Untitled note",
       input.content ?? "",
@@ -671,7 +537,6 @@ export async function createNote(input: NoteInput): Promise<string> {
       input.cover || null,
       input.position ?? nextNotePosition(input.parent_id || null),
       input.project_id || null,
-      input.goal_id || null,
       input.task_id || null,
       now,
       now,
@@ -689,7 +554,7 @@ export async function createNote(input: NoteInput): Promise<string> {
 export async function updateNote(id: string, patch: NoteInput): Promise<void> {
   const columns = [
     "title", "content", "kind", "date", "parent_id", "icon", "cover", "position",
-    "project_id", "goal_id", "task_id",
+    "project_id", "task_id",
   ];
   tx(() => {
     const sets: string[] = [];
@@ -810,8 +675,8 @@ export async function duplicateNote(id: string, parentId?: string | null): Promi
     const now = nowISO();
     run(
       `INSERT INTO notes(id, title, content, kind, date, parent_id, icon, cover, position,
-         project_id, goal_id, task_id, pinned, archived, created_at, updated_at)
-       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+         project_id, task_id, pinned, archived, created_at, updated_at)
+       VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
       newNoteId,
       title,
       note.content,
@@ -822,7 +687,6 @@ export async function duplicateNote(id: string, parentId?: string | null): Promi
       note.cover,
       nextNotePosition(parent),
       note.project_id,
-      note.goal_id,
       note.task_id,
       note.archived,
       now,
@@ -859,7 +723,6 @@ export async function createChildNote(parentId: string, title = "Untitled"): Pro
     title,
     parent_id: parentId,
     project_id: parent?.project_id ?? null,
-    goal_id: parent?.goal_id ?? null,
   });
 }
 
@@ -883,7 +746,7 @@ export async function setNoteAppearance(
   touch();
 }
 
-/** Turn one line of a note into a task, keeping the note's project/goal context. */
+/** Turn one line of a note into a task, keeping the note's project context. */
 export async function noteLineToTask(
   noteId: string,
   line: string,
@@ -896,7 +759,6 @@ export async function noteLineToTask(
   const id = await createTask({
     title,
     project_id: extra.project_id ?? note.project_id,
-    goal_id: extra.goal_id ?? note.goal_id,
     notes: `From note: [[${note.title}]] (note:${note.id})`,
     ...extra,
   });
@@ -930,21 +792,9 @@ export interface EmbeddedTask {
   project_color: string | null;
 }
 
-export interface EmbeddedGoal {
-  id: string;
-  title: string;
-  status: string;
-  metric: string | null;
-  target_date: string | null;
-  task_done: number;
-  task_total: number;
-  minutes_logged: number;
-}
-
 /** Live tasks for a `::tasks` block. Empty filters mean "this page's project". */
 export async function embedTasks(filter: {
   projectId?: string | null;
-  goalId?: string | null;
   status?: string | null;
   limit?: number;
 }): Promise<EmbeddedTask[]> {
@@ -955,7 +805,6 @@ export async function embedTasks(filter: {
 
   const tasks = listTasks({
     projectId: filter.projectId || undefined,
-    goalId: filter.goalId || undefined,
     status: status.length ? status : undefined,
     includeDone: status.includes("done") || !status.length,
     parentId: null,
@@ -972,22 +821,6 @@ export async function embedTasks(filter: {
     project_title: task.project_title,
     project_color: task.project_color,
   }));
-}
-
-/** Live progress for a `::goal` block. */
-export async function embedGoal(goalId: string): Promise<EmbeddedGoal | null> {
-  const goal = goalId ? getGoal(goalId) : undefined;
-  if (!goal) return null;
-  return {
-    id: goal.id,
-    title: goal.title,
-    status: goal.status,
-    metric: goal.metric,
-    target_date: goal.target_date,
-    task_done: goal.task_done,
-    task_total: goal.task_total,
-    minutes_logged: goal.minutes_logged,
-  };
 }
 
 /* -------------------------------------------------------------- palette */
@@ -1008,28 +841,6 @@ export async function recentTargets(): Promise<SearchHit[]> {
     context: null,
     href: `/notes/${note.id}`,
   }));
-}
-
-/* ------------------------------------------------------------------- reviews */
-
-export async function saveReview(
-  kind: "daily" | "weekly" | "monthly",
-  periodKey: string,
-  data: Record<string, string>,
-): Promise<void> {
-  const now = nowISO();
-  run(
-    `INSERT INTO reviews(id, kind, period_key, data, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?)
-     ON CONFLICT(kind, period_key) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`,
-    newId(),
-    kind,
-    periodKey,
-    JSON.stringify(data),
-    now,
-    now,
-  );
-  touch();
 }
 
 /* ------------------------------------------------------------ areas/settings */
