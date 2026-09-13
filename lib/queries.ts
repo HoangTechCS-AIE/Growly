@@ -1,9 +1,9 @@
 import "server-only";
 import { all, get } from "./db";
 import type {
-  Area, ContentDraft, GoalView, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
-  ReviewRecord, SearchHit, SearchKind, Settings, Strategy, Tag, Task, TaskEvent, TaskStatus,
-  TaskView, TimeLog, Vision,
+  Area, ContentDraft, Milestone, Note, NoteTreeItem, NoteView, ProjectView, Reflection,
+  ReviewRecord, SearchHit, SearchKind, Settings, Tag, Task, TaskEvent, TaskStatus,
+  TaskView, TimeLog,
 } from "./types";
 import { SNIPPET_CLOSE, SNIPPET_OPEN, STATUS_LABEL } from "./types";
 export type { SearchHit, SearchKind } from "./types";
