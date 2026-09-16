@@ -35,8 +35,11 @@ COPY --from=builder /app/public ./public
 # Read at runtime by lib/db.ts, and by the scripts when seeding or importing.
 COPY --from=builder /app/lib/schema.sql ./lib/schema.sql
 COPY --from=builder /app/scripts/seed.mjs ./scripts/seed.mjs
-# Loads the crawled fanpage archive into fb_posts, which the Content page needs
-# examples from. Only useful with the archive mounted under /app/data.
+# Fills the archive under /app/data from the Graph API, then loads it into
+# fb_posts, which the Content page needs examples from. `data/` is gitignored
+# and the volume starts empty, so without these two the deployed Content page
+# stops at its "no posts imported" screen.
+COPY --from=builder /app/scripts/crawl-posts.mjs ./scripts/crawl-posts.mjs
 COPY --from=builder /app/scripts/import-posts.mjs ./scripts/import-posts.mjs
 
 # The database is a file on a mounted volume; `node` is uid 1000 in this image.
