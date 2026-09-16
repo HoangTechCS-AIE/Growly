@@ -8,6 +8,7 @@
     "start": "next start",
     "seed": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/seed.mjs",
     "test:flows": "tsc -p tsconfig.smoke.json && node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/smoke-test.cjs",
+    "crawl:posts": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/crawl-posts.mjs",
     "import:posts": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/import-posts.mjs",
     "lint:corpus": "tsc -p tsconfig.smoke.json && node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/lint-corpus.cjs",
     "test:content": "tsc -p tsconfig.smoke.json && node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/test-generate.cjs",

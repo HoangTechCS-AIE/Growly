@@ -51,6 +51,34 @@ cp data/growly.db backup.db
 Beside them sits `data/.session-key`, the key that signs session cookies; delete
 it to sign every browser out, or set `GROWLY_SECRET` instead.
 
+### Crawling the fanpage archive
+
+Content needs real posts to learn the voice from. With admin rights on the page,
+pull them over the Graph API rather than scraping:
+
+1. Open [Graph API Explorer](https://developers.facebook.com/tools/explorer),
+   pick (or create) an app, and add the `pages_read_engagement` and
+   `pages_read_user_content` permissions.
+2. Switch the token dropdown to a **Page access token** for the fanpage — a user
+   token cannot read `/published_posts`.
+3. Extend it before a long crawl; the Explorer hands out short-lived tokens that
+   expire in about an hour. The Access Token Debugger has an *Extend* button.
+4. Put the token and the page ID in `.env` as `FB_PAGE_TOKEN` and `FB_PAGE_ID`.
+
+```bash
+npm run crawl:posts -- --dry-run        # check the token and count what is there
+npm run crawl:posts                     # write data/<post_id>/post.json
+npm run crawl:posts -- --since=2024-01-01
+npm run import:posts                    # load them into fb_posts
+```
+
+Both steps are safe to re-run: the crawler overwrites each post's own file and
+the importer upserts by post id, so a later pass picks up new and edited posts
+without disturbing the rest. Posts without text are skipped — a photo dump
+teaches nothing about the writing. The importer prints a count per category;
+a large `khac` bucket means the title patterns in `scripts/import-posts.mjs`
+do not match how this page names its posts.
+
 ```bash
 npm run build && npm start   # production mode
 npm run test:flows           # data-layer smoke test on a throwaway database
