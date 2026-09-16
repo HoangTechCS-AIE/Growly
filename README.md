@@ -72,6 +72,15 @@ npm run crawl:posts -- --since=2024-01-01
 npm run import:posts                    # load them into fb_posts
 ```
 
+On the server the same two steps run inside the container, which mounts the
+archive from `/opt/growly/data` and reads the token from `/opt/growly/.env`:
+
+```bash
+docker exec growly node scripts/crawl-posts.mjs
+docker exec growly node scripts/import-posts.mjs
+docker restart growly   # the Content page caches the corpus stats per request
+```
+
 Both steps are safe to re-run: the crawler overwrites each post's own file and
 the importer upserts by post id, so a later pass picks up new and edited posts
 without disturbing the rest. Posts without text are skipped — a photo dump
